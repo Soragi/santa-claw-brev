@@ -150,6 +150,7 @@ if ! userctl is-active --quiet "$service" || ! ready; then
   userctl restart "$service" || { echo 'Installation failed. See the recovery instructions and private native diagnostics.' >&2; exit 1; }
 fi
 ready || { echo 'Village readiness check failed.' >&2; exit 1; }
+userctl stop santa-claw-wait.service 2>/dev/null || true
 userctl start santa-claw-welcome.service
 curl --fail --silent --retry 8 --retry-connrefused --retry-delay 1 http://127.0.0.1:4311/santa/api/ready >/dev/null
 echo '3/3 · Village ready. Select Enter Santa Claw Village on the Brev instance page.'

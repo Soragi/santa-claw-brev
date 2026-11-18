@@ -159,6 +159,7 @@ if ! userctl is-active --quiet "$service" || ! ready; then
   userctl restart "$service" || { echo 'Installation failed. See the recovery instructions and private native diagnostics.' >&2; exit 1; }
 fi
 ready || { echo 'Village readiness check failed.' >&2; exit 1; }
+userctl stop santa-claw-wait.service 2>/dev/null || true
 userctl start santa-claw-welcome.service
 curl --fail --silent --retry 8 --retry-connrefused --retry-delay 1 http://127.0.0.1:4311/santa/api/ready >/dev/null
 echo '3/3 · Village ready. Select Enter Santa Claw Village on the Brev instance page.'
@@ -213,7 +214,7 @@ class Page(BaseHTTPRequestHandler):
         <button>Start my workshop →</button></form>"""
         phase = state
         body = {"setup":form, "source":"<p>Application source unavailable. Ask the organizer to stage the verified workshop archive, then retry.</p>"+form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
-                "installing":"<p>Preparing your agents and connecting inference. This page refreshes automatically.</p>",
+                "installing":"<p>Return to your Brev instance and click <strong>Santa Claw Village</strong>. The village page will open when installation finishes.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
         page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{refresh}
@@ -221,7 +222,7 @@ class Page(BaseHTTPRequestHandler):
         main{{max-width:640px;margin:6vh auto;padding:clamp(20px,5vw,54px);background:#191d19;border:1px solid #394437;border-top:4px solid #76b900;border-radius:12px}}h1{{font: bold clamp(2rem,5vw,3rem) system-ui;margin:.3em 0}}label{{display:block;margin:18px 0}}
         input,select,button{{display:block;width:100%;margin-top:5px;border:0;border-radius:8px;padding:13px;font:inherit}}
         button{{background:#9bda39;color:#372610;cursor:pointer;font-weight:bold}}a{{color:#b6ea63}}</style><main>
-        <span style="color:#a8dc61">NVIDIA Build &nbsp; / &nbsp; CPU workshop</span><h1>Santa Claw Village</h1><p>Choose the agent runtime and hosted model for your workshop.</p>{body}</main></html>"""
+        <span style="color:#a8dc61">NVIDIA Build &nbsp; / &nbsp; CPU workshop</span><h1>Santa Claw Village</h1>{body}</main></html>"""
         self.send_response(200)
         self.send_header("Content-Type","text/html; charset=utf-8")
         self.send_header("Cache-Control","no-store")
@@ -271,5 +272,24 @@ UMask=0077
 WantedBy=default.target
 UNIT
 ctl=(sudo -Hu "$owner" env XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" systemctl --user)
+sudo -Hu "$owner" tee "$base/wait.py" >/dev/null <<'PYTHON'
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+class Waiting(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type","text/html; charset=utf-8")
+        self.send_header("Cache-Control","no-store")
+        self.end_headers()
+        self.wfile.write(b'<meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="5;url=/"><title>Santa Claw Village</title><body style="background:#151815;color:white;font:20px system-ui;padding:10vw"><h1 style="color:#a8dc61">Santa Claw Village</h1><p>Waiting for workshop setup. This page refreshes automatically.</p><p>For installation status, open Santa Claw Setup on your Brev instance.</p>')
+ThreadingHTTPServer(("0.0.0.0",4311),Waiting).serve_forever()
+PYTHON
+sudo -Hu "$owner" tee "$unitdir/santa-claw-wait.service" >/dev/null <<'UNIT'
+[Unit]
+Conflicts=santa-claw-welcome.service
+Before=santa-claw-welcome.service
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/santa-claw-onboarding/wait.py
+UNIT
 "${ctl[@]}" daemon-reload
 "${ctl[@]}" enable --now santa-claw-onboarding.service
+if ! "${ctl[@]}" is-active --quiet santa-claw-welcome.service; then "${ctl[@]}" start santa-claw-wait.service; fi

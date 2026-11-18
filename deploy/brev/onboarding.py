@@ -46,7 +46,7 @@ class Page(BaseHTTPRequestHandler):
         <button>Start my workshop →</button></form>"""
         phase = state
         body = {"setup":form, "source":"<p>Application source unavailable. Ask the organizer to stage the verified workshop archive, then retry.</p>"+form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
-                "installing":"<p>Preparing your agents and connecting inference. This page refreshes automatically.</p>",
+                "installing":"<p>Return to your Brev instance and click <strong>Santa Claw Village</strong>. The village page will open when installation finishes.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
         page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{refresh}
@@ -54,7 +54,7 @@ class Page(BaseHTTPRequestHandler):
         main{{max-width:640px;margin:6vh auto;padding:clamp(20px,5vw,54px);background:#191d19;border:1px solid #394437;border-top:4px solid #76b900;border-radius:12px}}h1{{font: bold clamp(2rem,5vw,3rem) system-ui;margin:.3em 0}}label{{display:block;margin:18px 0}}
         input,select,button{{display:block;width:100%;margin-top:5px;border:0;border-radius:8px;padding:13px;font:inherit}}
         button{{background:#9bda39;color:#372610;cursor:pointer;font-weight:bold}}a{{color:#b6ea63}}</style><main>
-        <span style="color:#a8dc61">NVIDIA Build &nbsp; / &nbsp; CPU workshop</span><h1>Santa Claw Village</h1><p>Choose the agent runtime and hosted model for your workshop.</p>{body}</main></html>"""
+        <span style="color:#a8dc61">NVIDIA Build &nbsp; / &nbsp; CPU workshop</span><h1>Santa Claw Village</h1>{body}</main></html>"""
         self.send_response(200)
         self.send_header("Content-Type","text/html; charset=utf-8")
         self.send_header("Cache-Control","no-store")
