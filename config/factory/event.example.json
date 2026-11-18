@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "organizer-must-configure",
+  "printer": "REPLACE with event printer and multicolor hardware",
+  "material": "REPLACE with qualified material",
+  "nozzleMm": 0.4,
+  "minFeatureMm": 1.2,
+  "maxBodyMm": 60,
+  "maxPrintMinutes": 180,
+  "maxMaterialGrams": 150,
+  "supports": "profile",
+  "colors": ["#76b900", "#ffffff", "#b42332", "#d9b768"],
+  "qualified": false,
+  "qualificationEvidence": "NOT QUALIFIED: example settings, not an event printer recommendation",
+  "slicerImage": "organizer/factory-slicer@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "cadWorkerImage": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "slicerProfileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "loop": {"outerRadius": 5, "innerRadius": 2.5, "depth": 4, "offset": 3}
+}

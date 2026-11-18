@@ -1,0 +1,17 @@
+# Third-party software
+
+Generated HTML can embed the lockfile-pinned Chart.js 4.4.7 UMD runtime from the installed npm package for offline charts. Its MIT license header remains in the embedded code; the full license is included in the npm package. Upstream: https://github.com/chartjs/Chart.js/tree/v4.4.7 . No CDN request is made during preview or dependency bundling.
+
+Santa Claw integrates NVIDIA NemoClaw and OpenShell and exports OpenClaw-compatible agent configurations. Those projects and all npm dependencies retain their respective licenses and trademarks. Santa Claw is an independent workshop application, not an official NVIDIA product.
+
+The optional credential flow downloads the public NVIDIA NemoClaw local credential helper and form at a pinned commit and checks their SHA-256 digests before execution. The upstream project is https://github.com/NVIDIA/NemoClaw . Its code is not relicensed by this repository. Runtime source and model software are installed separately.
+
+The official NVIDIA OpenShell SDK 0.0.116 is vendored unchanged as an npm archive under `vendor/` with its Apache-2.0 license and integrity/source provenance. See [vendor notes](vendor/README.md).
+
+Browser validation uses the version-pinned official Microsoft Playwright image and Playwright npm runtime. `config/playwright-seccomp.json` derives from Playwright v1.64.1 `utils/docker/seccomp_profile.json`, with an additional chroot syscall allowance for Chromium's own unprivileged user-namespace sandbox while all host capabilities remain dropped. Upstream source: https://github.com/microsoft/playwright/tree/v1.64.1/utils/docker . Apache-2.0 license: `vendor/PLAYWRIGHT-LICENSE.txt`. Image digest and version are pinned in `server/browser-check.mjs`.
+
+Printable solids use the version-pinned manifold-3d WebAssembly library (Apache-2.0), maintained by the Manifold project: https://manifoldcad.org/docs/jsapi/ . Its distributed license remains in the npm package. Raised block lettering is original procedural geometry; no external fonts or model assets are fetched.
+
+Challenge Three adapts the browser head-anchor calculation and uses `lobster_overlay.png` from Raymond Lo's LobsterHeadz (MIT, copyright 2026 raymondlo84): https://github.com/raymondlo84/lobsterheadz . The full MIT license is in `public/vendor/lobsterheadz/LICENSE`. The Santa hat is original canvas artwork. Face landmarks use Google's MediaPipe Tasks Vision (Apache-2.0); its license accompanies the locally served WebAssembly files under `public/vendor/vision/LICENSE`. The unmodified Face Landmarker task is the official Google AI Edge model distributed at https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task . Asset origins and SHA-256 digests are recorded in `public/vendor/provenance.json`. No attendee camera images or face templates are bundled.
+
+The optional Bauble Factory reference reader includes runtime instructions and references for `omniverse-cad-to-simready` and `omniverse-realtime-viewer` from NVIDIA/skills. The immutable source revision, packaging omissions and upstream license files are recorded in `vendor/nvidia-factory-skills/`. Upstream benchmark reports and publication scorecards are not distributed. These optional references do not install NVIDIA GPU services or certify manufacturing safety. The isolated CAD worker installs CadQuery, trimesh, Pillow, NumPy, NetworkX and SciPy at the versions in `deploy/factory/Dockerfile`; each dependency retains its upstream license.

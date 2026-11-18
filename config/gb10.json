@@ -1,0 +1,27 @@
+{
+  "target": "dgx-spark-gb10",
+  "platform": "linux",
+  "architecture": "arm64",
+  "gpuName": "GB10",
+  "computeCapability": "12.1",
+  "nodeMinimum": "22.19.0",
+  "referenceMemoryGiB": 120,
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "1355db6a052410cfd62085d94b58866fd0f2c3c5",
+    "servedName": "santa-qwen",
+    "port": 8000,
+    "maxModelLength": 32768,
+    "maxSequences": 1,
+    "thinking": false,
+    "maxOutputTokens": 12288,
+    "workerOutputTokens": 10000
+  },
+  "runtime": {
+    "python": "3.13",
+    "vllm": "0.28.0",
+    "flashinfer": "0.6.16.post3",
+    "cutlassDsl": "4.6.2"
+  },
+  "validation": "Hardware/dependency profile, not a guarantee of GPU fit or live end-to-end qualification. Validate the native route and full agent workflow on the target device."
+}

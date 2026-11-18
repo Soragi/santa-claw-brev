@@ -1,0 +1,1 @@
+import{parentPort,workerData}from'node:worker_threads';import{buildModelFiles}from'./model-geometry.mjs';try{const files=await buildModelFiles(workerData.avatar,workerData.name);parentPort.postMessage({files},Object.values(files).map(v=>v.buffer));}catch(e){parentPort.postMessage({error:e.message});}

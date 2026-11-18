@@ -1,0 +1,2 @@
+import React from 'react';
+export default function ConnectionHelp({port}){return <><p className="muted">Find your SSH username and address in your server’s connection instructions, or reuse your usual alias from <code>~/.ssh/config</code>. Replace <code>YOUR_SSH_HOST</code> with <code>user@hostname</code> or that alias. Run the command on your laptop and keep the terminal open.</p><p className="muted">Using Brev? Run <code>brev ls</code> to find your instance name, then use:</p><code>brev port-forward YOUR_BREV_INSTANCE -p {port}:{port}</code></>;}

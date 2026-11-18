@@ -1,0 +1,17 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public SHA-256 integrity pins of the upstream reviewed NVIDIA helper/form; not credentials"
+regexTarget = "secret"
+regexes = [
+  '''^1a42bbe8dbc9003cb79d4e641b53760571aacd85293671aee97c09c0746fef33$''',
+  '''^5512a256e0ad7c63a26ab82cf4f5924e98652097172ab8a5dc9d9358dd4f6ae8$'''
+]
+
+[[allowlists]]
+description = "Synthetic PRIVATE_HEADER fixture used only to verify network-trace redaction"
+condition = "AND"
+paths = ['''(?:^|/)tests/hermes-runtime\.test\.mjs$''']
+regexTarget = "match"
+regexes = ['''Authorization: PRIVATE_HEADER''']

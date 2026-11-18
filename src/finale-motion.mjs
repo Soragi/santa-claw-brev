@@ -1,0 +1,1 @@
+export function finaleMotion(seconds){const t=Math.max(0,seconds);const flight=Math.max(0,Math.min(1,(t-11)/10)),travel=flight*flight*95;return {departed:t>=21,sled:[-17+Math.sin(.3)*travel,Math.pow(flight,1.5)*24,-3+Math.cos(.3)*travel],flight,fireworks:t>=17};}

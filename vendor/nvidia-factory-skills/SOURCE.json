@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/NVIDIA/skills",
+  "commit": "d59805503396547363ff0079c436b1cae496e1af",
+  "skills": [
+    "omniverse-cad-to-simready",
+    "omniverse-realtime-viewer"
+  ],
+  "purpose": "Optional organizer-provisioned USD preparation and GPU visualization. Not manufacturing validation. Preserve upstream prerequisites and licenses.",
+  "localPackaging": "Upstream evaluation reports and publication scorecards omitted; runtime skill instructions, references, signatures and licenses retained."
+}

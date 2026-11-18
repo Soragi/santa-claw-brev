@@ -1,0 +1,4 @@
+export function squareCrop(width,height){const size=Math.min(width,height)*.62;return{x:(width-size)/2,y:(height-size)/2,size};}
+// Adapted from LobsterHeadz's MIT-licensed eyebrow/head estimation, using MediaPipe landmarks.
+export function headAnchor(points,w,h){const a=points[105],b=points[334];if(!a||!b)return null;const left=points[127],right=points[356],top=points[10],eyeWidth=Math.hypot((a.x-b.x)*w,(a.y-b.y)*h),templeWidth=left&&right?Math.hypot((left.x-right.x)*w,(left.y-right.y)*h):0,width=templeWidth>eyeWidth*.8?templeWidth:eyeWidth*1.65,forehead=top&&top.y<(a.y+b.y)/2;return{x:forehead?top.x*w:(a.x+b.x)/2*w,y:forehead?top.y*h+width*.065:(a.y+b.y)/2*h-width*.32,width:Math.max(12,width),angle:Math.atan2((b.y-a.y)*h,(b.x-a.x)*w)};}
+export function faceRect(points,w,h){const xs=points.map(p=>p.x*w),ys=points.map(p=>p.y*h);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};}
