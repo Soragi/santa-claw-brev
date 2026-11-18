@@ -10,7 +10,7 @@ if SANTA_MODEL='model;echo' bash "$setup" --plan 2>/dev/null; then exit 1; fi
 tmp=$(mktemp -d); pid=''
 cleanup() { if [[ -n $pid ]]; then kill "$pid" 2>/dev/null || true; fi; rm -rf -- "$tmp"; }
 trap cleanup EXIT
-sed -n "/<<'RELAY'/,/^RELAY$/{ /<<'RELAY'/d; /^RELAY$/d; p; }" "$setup" | sed "s/server.listen(4311,'127.0.0.1');/server.listen(0,'127.0.0.1',()=>console.log(server.address().port));/" > "$tmp/welcome.cjs"
+sed -n "/<<'RELAY'/,/^RELAY$/{ /<<'RELAY'/d; /^RELAY$/d; p; }" "$setup" | sed "s/server.listen(4311,'0.0.0.0');/server.listen(0,'127.0.0.1',()=>console.log(server.address().port));/" > "$tmp/welcome.cjs"
 nodebin=$(command -v node || find "$HOME/.nvm/versions/node" -name node -type f | head -1)
 "$nodebin" "$tmp/welcome.cjs" > "$tmp/port" & pid=$!
 for attempt in {1..30}; do [[ -s $tmp/port ]] && break; sleep 0.2; done

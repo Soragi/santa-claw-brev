@@ -119,7 +119,7 @@ server.on('upgrade',(req,socket,head)=>{
   });
   socket.on('error',()=>upstream.destroy());upstream.on('error',()=>socket.destroy());socket.on('close',()=>upstream.destroy());upstream.on('close',()=>socket.destroy());
 });
-server.listen(4311,'127.0.0.1');
+server.listen(4311,'0.0.0.0');
 RELAY
 as_owner tee "$conf/welcome" >/dev/null <<'WELCOME'
 #!/bin/bash
@@ -243,7 +243,7 @@ class Page(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    ThreadingHTTPServer(("127.0.0.1",4312),Page).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0",4312),Page).serve_forever()
 
 SANTA_PAYLOAD
 sudo loginctl enable-linger "$owner"

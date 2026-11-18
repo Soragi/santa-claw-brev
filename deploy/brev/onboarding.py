@@ -84,4 +84,4 @@ class Page(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    ThreadingHTTPServer(("127.0.0.1",4312),Page).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0",4312),Page).serve_forever()
