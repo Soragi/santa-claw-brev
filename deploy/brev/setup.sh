@@ -49,6 +49,8 @@ if ! as_owner test -d "$root"; then
   fi
 fi
 as_owner test -f "$root/.verified-74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d" || [[ $(as_owner git -C "$root" rev-parse HEAD) == "$revision" ]] || exit 41
+# The unprivileged gift-shop container bind-mounts this public workshop script.
+as_owner chmod 0644 "$root/deploy/inventory-server.py"
 if as_owner test -e "$conf/options" && ! printf '%s\n%s\n' "$agent" "$model" | as_owner cmp -s - "$conf/options"; then
   echo 'This instance already has a different runtime or model. Create a new instance or reconfigure it explicitly.' >&2; exit 1
 fi
