@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 umask 077
 owner=$(id -un)
@@ -7,7 +7,7 @@ uid=$(id -u "$owner")
 base=$(getent passwd "$owner" | cut -d: -f6)/.local/share/santa-claw-onboarding
 sudo install -d -o "$owner" -m 700 "$base"
 sudo -Hu "$owner" tee "$base/install.sh" >/dev/null <<'SANTA_PAYLOAD'
-#!/usr/bin/env bash
+#!/bin/bash
 # Paste this complete script into a Brev VM Mode Launchable.
 set +x
 set -euo pipefail

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Paste this complete script into a Brev VM Mode Launchable.
 set +x
 set -euo pipefail
