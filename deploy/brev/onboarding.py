@@ -67,7 +67,7 @@ class Page(BaseHTTPRequestHandler):
             phase = "source"
         elif phase == "source":
             phase = "setup"
-        source_form = f"""<h2>Load the workshop files</h2><p>Download the signed-in GitHub release file, or get it from your organizer. Upload it here to unlock model setup.</p>
+        source_form = f"""<h2>Load the workshop files</h2><p>Download the GitHub release file, or get it from your organizer. Upload it here to unlock model setup.</p>
         <p><a href="{release}" rel="noreferrer">Download workshop archive</a></p>
         <form method="post" action="/source/{nonce}" enctype="multipart/form-data"><label>Workshop archive<input required type="file" name="archive" accept=".gz"></label><button>Verify workshop archive</button></form>"""
         body = {"setup":form, "source":source_form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
