@@ -3,7 +3,7 @@
 set +x
 set -euo pipefail
 umask 077
-revision=1f960e386199e7f816b276fdfa233237e8411f6a
+revision=7bfa65404acefeebc56493cf6073992bc9c55ffc
 agent=${SANTA_RUNTIME:-hermes}
 model=${SANTA_MODEL:-nvidia/nemotron-3.5-super-vl-120b-a12b}
 case "$agent" in hermes|openclaw) ;; *) echo 'Choose Hermes or OpenClaw.' >&2; exit 2;; esac
@@ -38,17 +38,17 @@ fi
 archive="$owner_home/.local/share/santa-claw-onboarding/source.tar.gz"
 if ! as_owner test -d "$root"; then
   if as_owner test -f "$archive"; then
-    printf '%s  %s\n' '74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d' "$archive" | as_owner sha256sum --check --status || exit 41
+    printf '%s  %s\n' 'ea005e1563f08724b7b4262f07ea6f2553aa6970e18877de24f047970350c27b' "$archive" | as_owner sha256sum --check --status || exit 41
     stage=$(as_owner mktemp -d "$owner_home/.santa-source.XXXXXX")
     as_owner tar -xzf "$archive" -C "$stage"
-    as_owner touch "$stage/.verified-74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d"
+    as_owner touch "$stage/.verified-ea005e1563f08724b7b4262f07ea6f2553aa6970e18877de24f047970350c27b"
     as_owner mv -T "$stage" "$root"
   else
-    as_owner env GIT_TERMINAL_PROMPT=0 git clone --quiet https://github.com/Soragi/santa-claw.git "$root" || exit 41
+    as_owner env GIT_TERMINAL_PROMPT=0 git clone --quiet https://github.com/Soragi/santa-claw-brev.git "$root" || exit 41
     as_owner git -C "$root" checkout -q --detach "$revision"
   fi
 fi
-as_owner test -f "$root/.verified-74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d" || [[ $(as_owner git -C "$root" rev-parse HEAD) == "$revision" ]] || exit 41
+as_owner test -f "$root/.verified-ea005e1563f08724b7b4262f07ea6f2553aa6970e18877de24f047970350c27b" || [[ $(as_owner git -C "$root" rev-parse HEAD) == "$revision" ]] || exit 41
 # The unprivileged gift-shop container bind-mounts this public workshop script.
 as_owner chmod 0644 "$root/deploy/inventory-server.py"
 if as_owner test -e "$conf/options" && ! printf '%s\n%s\n' "$agent" "$model" | as_owner cmp -s - "$conf/options"; then
