@@ -2,13 +2,9 @@
 
 ## Launch on NVIDIA Brev (CPU, hosted inference)
 
-1. Open your organizer’s **Santa Claw Village** Launchable in Brev. Keep **CPU** selected (suggested: 4 vCPU, 16 GiB RAM). Each attendee deploys their own VM.
-2. In **Setup values**, choose **Hermes** or **OpenClaw**, select your saved [NVIDIA Build](https://build.nvidia.com/) API key, and keep the recommended `nvidia/nemotron-3.5-super-vl-120b-a12b` or enter another hosted model ID that supports tool calls and images.
-3. Click **Deploy**. When setup finishes, open the authenticated **Enter Santa Claw Village** link, then **Enter Santa Claw Village →**. No local model, GPU, notebook commands or laptop installation required.
+Launch a CPU VM and open **Set up Santa Claw**. Choose Hermes or OpenClaw, keep the recommended NVIDIA Nemotron model or enter a compatible model ID, and enter your NVIDIA Build API key. Click **Start my workshop**. Once ready, open **Enter Santa Claw Village** on your instance page.
 
-Organizers: [Create the Santa Claw Launchable, configure its secure link, and verify a new deployment](docs/brev-launchable.md). The VSS reference Launchable deploys a different application.
-
-Choose **OpenClaw or Hermes** with the [portable launcher](docs/portable-install.md), using existing vLLM or NVIDIA-hosted inference. The core Hermes workflow is validated on Linux CPU with hosted inference; full event acceptance on each target platform remains required.
+Organizers can configure the two secure links using the [Launchable guide](docs/brev-launchable.md).
 
 A local-first, Christmas-themed agent workshop for **NVIDIA DGX Spark GB10**. Design a printable 3D Claw, give it tools and skills, then deploy it in Santa’s village. Santa coordinates native OpenClaw agents inside a NemoClaw-managed OpenShell sandbox; inference runs locally.
 

@@ -1,6 +1,10 @@
 # Santa Claw Village on Brev
 
-## Organizer: build the launch page once
+## Santa-themed browser onboarding (recommended)
+
+Choose CPU hardware and VM Mode, disable Jupyter, and paste the complete [GUI setup script](../deploy/brev/gui-setup.sh) into **Run a Setup Script**. Leave launch parameters empty. Add two authenticated Brev Secure Links: **Set up Santa Claw** on port **4312** as the primary call to action and **Enter Santa Claw Village** on port **4311**. Keep public TCP ports disabled. The setup page collects the runtime, model and masked API key and starts the installer on this VM.
+
+## Alternative: collect setup values before VM launch
 
 In the [Brev Console](https://brev.nvidia.com/), select the event organization, then **Launchables → Create Launchable**. Use these settings in NVIDIA’s [Launchable builder](https://docs.nvidia.com/brev/concepts/launchables):
 
