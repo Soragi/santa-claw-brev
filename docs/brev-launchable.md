@@ -2,7 +2,7 @@
 
 ## Santa-themed browser onboarding (recommended)
 
-Choose CPU hardware and VM Mode, disable Jupyter, and paste the complete [GUI setup script](../deploy/brev/gui-setup.sh) into **Run a Setup Script**. Leave launch parameters empty. Add two authenticated Brev Secure Links: **Set up Santa Claw** on port **4312** as the primary call to action and **Enter Santa Claw Village** on port **4311**. Keep public TCP ports disabled. The setup page collects the runtime, model and masked API key and starts the installer on this VM.
+Choose CPU hardware and VM Mode, disable Jupyter, and paste the complete [GUI setup script](../deploy/brev/gui-setup.sh) into **Run a Setup Script**. For private source, the organizer can supply a read-only HTTPS archive URL using a Brev secret named `SANTA_SOURCE_URL`. Use the pinned archive with SHA-256 `74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d`, or stage it as `~/.local/share/santa-claw-onboarding/source.tar.gz` in the workshop image. Add two authenticated Brev Secure Links: **Set up Santa Claw** on port **4312** as the primary call to action and **Enter Santa Claw Village** on port **4311**. Keep public TCP ports disabled. The setup page collects the runtime, model and masked API key and starts the installer on this VM.
 
 ## Alternative: collect setup values before VM launch
 
