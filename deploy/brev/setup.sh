@@ -35,9 +35,6 @@ if ! id -nG "$owner" | tr ' ' '\n' | grep -Fxq docker; then
   echo 'The workshop owner needs membership in the Docker group.' >&2
   exit 1
 fi
-gateway_dropin="$unitdir/nemoclaw-openshell-gateway.service.d"
-as_owner mkdir -p "$gateway_dropin"
-printf '%s\n' '[Service]' 'ExecStart=' 'ExecStart=/usr/bin/sg docker -c %h/.local/bin/openshell-gateway' | as_owner tee "$gateway_dropin/santa-docker.conf" >/dev/null
 archive="$owner_home/.local/share/santa-claw-onboarding/source.tar.gz"
 if ! as_owner test -d "$root"; then
   if as_owner test -f "$archive"; then
