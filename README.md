@@ -6,6 +6,14 @@ Launch a CPU VM and open **Set up Santa Claw**. Choose Hermes or OpenClaw, keep 
 
 Organizers can configure the two secure links using the [Launchable guide](docs/brev-launchable.md).
 
+### Your first challenge on Brev
+
+1. Open **Santa Claw Village** from the Brev instance page after submitting the setup form. Leave the village page open while installation runs. If it says **Installation stopped**, open **Set up Santa Claw** for the failure details.
+2. Enter the village and select the **Post Office**. Create a dedicated mail agent, give it a name, and write its instructions. Tell it which facts in the original letter must match the reply.
+3. Choose its MCP permissions and test the boundaries. If a selection is incorrect, adjust it and retry the quiz.
+4. Compare ten proposed replies with their source letters. Approve the five accurate replies and reject the five incorrect ones. Check the child's name, requested gift, and any delivery promise.
+5. Click **Deploy Agent**. A score of at least **5/6** on the model check qualifies the agent. Watch it handle a letter autonomously, then use bulk send to clear the remaining queue. The Post Office shows a green check when the challenge is complete.
+
 A local-first, Christmas-themed agent workshop for **NVIDIA DGX Spark GB10**. Design a printable 3D Claw, give it tools and skills, then deploy it in Santa’s village. Santa coordinates native OpenClaw agents inside a NemoClaw-managed OpenShell sandbox; inference runs locally.
 
 ## Install on a GB10
