@@ -1,4 +1,3 @@
-import html
 import os
 import re
 import secrets
@@ -6,7 +5,7 @@ import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs
 
 directory = Path(__file__).resolve().parent
 completed = directory / "complete"
@@ -46,7 +45,7 @@ class Page(BaseHTTPRequestHandler):
         <button>Start my workshop →</button></form>"""
         phase = state
         body = {"setup":form, "source":"<p>Application source unavailable. Ask the organizer to stage the verified workshop archive, then retry.</p>"+form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
-                "installing":"<p>Return to your Brev instance and click <strong>Santa Claw Village</strong>. The village page will open when installation finishes.</p>",
+                "installing":"<progress aria-label='Installing workshop'></progress><p>Open <strong>Santa Claw Village</strong> from your Brev instance.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
         page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{refresh}
