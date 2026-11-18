@@ -31,6 +31,13 @@ unitdir="$owner_home/.config/systemd/user"; service=santa-claw-launchable.servic
 sudo -n loginctl enable-linger "$owner"
 sudo -n systemctl start "user@$uid.service"
 as_owner mkdir -p "$conf" "$unitdir"
+if ! id -nG "$owner" | tr ' ' '\n' | grep -Fxq docker; then
+  echo 'The workshop owner needs membership in the Docker group.' >&2
+  exit 1
+fi
+gateway_dropin="$unitdir/nemoclaw-openshell-gateway.service.d"
+as_owner mkdir -p "$gateway_dropin"
+printf '%s\n' '[Service]' 'ExecStart=' 'ExecStart=/usr/bin/sg docker -c %h/.local/bin/openshell-gateway' | as_owner tee "$gateway_dropin/santa-docker.conf" >/dev/null
 archive="$owner_home/.local/share/santa-claw-onboarding/source.tar.gz"
 if ! as_owner test -d "$root"; then
   if as_owner test -f "$archive"; then
@@ -70,6 +77,7 @@ if ! ./santa-claw "${args[@]}" >/dev/null 2>"$diagnostic"; then
   fi
 fi
 START
+as_owner chmod 700 "$conf/start"
 as_owner tee "$unitdir/$service" >/dev/null <<'UNIT'
 [Unit]
 Description=Santa Claw CPU workshop with NVIDIA hosted inference
@@ -80,7 +88,7 @@ Type=oneshot
 RemainAfterExit=yes
 TimeoutStartSec=2h
 UMask=0077
-ExecStart=/bin/bash %h/.config/santa-claw-launchable/start
+ExecStart=/usr/bin/sg docker -c %h/.config/santa-claw-launchable/start
 StandardOutput=null
 StandardError=null
 
