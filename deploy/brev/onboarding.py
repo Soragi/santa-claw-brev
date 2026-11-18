@@ -25,7 +25,9 @@ def install(runtime, model, key):
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         completed.touch(mode=0o600)
         state = "ready"
-    except (OSError, subprocess.SubprocessError):
+    except subprocess.CalledProcessError as error:
+        state = "source" if error.returncode == 41 else "failed"
+    except OSError:
         state = "failed"
 
 
@@ -43,16 +45,16 @@ class Page(BaseHTTPRequestHandler):
         <p><a href="https://build.nvidia.com/" target="_blank" rel="noreferrer">Get a key from NVIDIA Build ↗</a></p>
         <button>Start my workshop →</button></form>"""
         phase = state
-        body = {"setup":form, "failed":"<p>Setup failed. Check the key and model, then retry.</p>"+form,
+        body = {"setup":form, "source":"<p>Application source unavailable. Ask the organizer to stage the verified workshop archive, then retry.</p>"+form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
                 "installing":"<p>Preparing your agents and connecting inference. This page refreshes automatically.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
         page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{refresh}
-        <title>Santa Claw Workshop</title><style>*{{box-sizing:border-box}}body{{margin:0;background:#113d33;color:#fff9ea;font:18px/1.5 system-ui}}
-        main{{max-width:560px;margin:6vh auto;padding:32px}}h1{{font: bold 3rem Georgia;margin:.3em 0}}label{{display:block;margin:18px 0}}
+        <title>Santa Claw Workshop</title><style>*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(ellipse at top right,#213227,#101310 55%);min-height:100vh;color:#f6f8f4;font:18px/1.5 system-ui}}
+        main{{max-width:640px;margin:6vh auto;padding:clamp(20px,5vw,54px);background:#191d19;border:1px solid #394437;border-top:4px solid #76b900;border-radius:12px}}h1{{font: bold clamp(2rem,5vw,3rem) system-ui;margin:.3em 0}}label{{display:block;margin:18px 0}}
         input,select,button{{display:block;width:100%;margin-top:5px;border:0;border-radius:8px;padding:13px;font:inherit}}
-        button{{background:#ffd59b;color:#372610;cursor:pointer;font-weight:bold}}a{{color:#ffe0ae}}</style><main>
-        <span aria-hidden="true">🎄 ❄</span><h1>Santa Claw Workshop</h1>{body}</main></html>"""
+        button{{background:#9bda39;color:#372610;cursor:pointer;font-weight:bold}}a{{color:#b6ea63}}</style><main>
+        <span style="color:#a8dc61">NVIDIA Build &nbsp; / &nbsp; CPU workshop</span><h1>Santa Claw Village</h1><p>Choose the agent runtime and hosted model for your workshop.</p>{body}</main></html>"""
         self.send_response(200)
         self.send_header("Content-Type","text/html; charset=utf-8")
         self.send_header("Cache-Control","no-store")
@@ -75,7 +77,7 @@ class Page(BaseHTTPRequestHandler):
             return self.send_error(400)
         global state
         with lock:
-            if state in ("setup","failed"):
+            if state in ("setup","source","failed"):
                 state = "installing"
                 threading.Thread(target=install,args=(runtime,model,key),daemon=True).start()
         self.send_response(303)

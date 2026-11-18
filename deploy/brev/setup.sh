@@ -31,12 +31,20 @@ unitdir="$owner_home/.config/systemd/user"; service=santa-claw-launchable.servic
 sudo -n loginctl enable-linger "$owner"
 sudo -n systemctl start "user@$uid.service"
 as_owner mkdir -p "$conf" "$unitdir"
+archive="$owner_home/.local/share/santa-claw-onboarding/source.tar.gz"
 if ! as_owner test -d "$root"; then
-  echo '1/3 · Unpacking the North Pole workshop…'
-  as_owner git clone --quiet https://github.com/Soragi/santa-claw.git "$root"
-  as_owner git -C "$root" checkout -q --detach "$revision"
+  if as_owner test -f "$archive"; then
+    printf '%s  %s\n' '74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d' "$archive" | as_owner sha256sum --check --status || exit 41
+    stage=$(as_owner mktemp -d "$owner_home/.santa-source.XXXXXX")
+    as_owner tar -xzf "$archive" -C "$stage"
+    as_owner touch "$stage/.verified-74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d"
+    as_owner mv -T "$stage" "$root"
+  else
+    as_owner env GIT_TERMINAL_PROMPT=0 git clone --quiet https://github.com/Soragi/santa-claw.git "$root" || exit 41
+    as_owner git -C "$root" checkout -q --detach "$revision"
+  fi
 fi
-[[ $(as_owner git -C "$root" rev-parse HEAD) == "$revision" ]] || { echo 'Existing checkout differs; preserving it.' >&2; exit 1; }
+as_owner test -f "$root/.verified-74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d" || [[ $(as_owner git -C "$root" rev-parse HEAD) == "$revision" ]] || exit 41
 if as_owner test -e "$conf/options" && ! printf '%s\n%s\n' "$agent" "$model" | as_owner cmp -s - "$conf/options"; then
   echo 'This instance already has a different runtime or model. Create a new instance or reconfigure it explicitly.' >&2; exit 1
 fi
