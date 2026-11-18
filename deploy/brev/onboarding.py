@@ -71,7 +71,7 @@ class Page(BaseHTTPRequestHandler):
         <p><a href="{release}" rel="noreferrer">Download workshop archive</a></p>
         <form method="post" action="/source/{nonce}" enctype="multipart/form-data"><label>Workshop archive<input required type="file" name="archive" accept=".gz"></label><button>Verify workshop archive</button></form>"""
         body = {"setup":form, "source":source_form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
-                "installing":"<progress aria-label='Installing workshop'></progress><p>Open <strong>Santa Claw Village</strong> from your Brev instance.</p>",
+                "installing":"<progress aria-label='Installing workshop'></progress><p>Installation is running. This page refreshes automatically and will tell you when the village is ready.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
         page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">{refresh}
