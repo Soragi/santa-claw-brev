@@ -2,6 +2,8 @@
 
 ## Launch on NVIDIA Brev (CPU, hosted inference)
 
+[Launch Santa Claw on Brev](https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3MHFwePd3IP0qooURV1nIBbtjp9)
+
 Launch a CPU VM and open **Set up Santa Claw**. Choose Hermes or OpenClaw, keep the recommended NVIDIA Nemotron model or enter a compatible model ID, and enter your NVIDIA Build API key. Click **Start my workshop**. Once ready, open **Enter Santa Claw Village** on your instance page.
 
 Organizers can configure the two secure links using the [Launchable guide](docs/brev-launchable.md).
