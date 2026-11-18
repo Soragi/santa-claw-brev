@@ -1,3 +1,7 @@
+import hashlib
+from email import policy
+from email.parser import BytesParser
+import tempfile
 import os
 import re
 import secrets
@@ -13,6 +17,21 @@ state = "ready" if completed.exists() else "setup"
 lock = threading.Lock()
 nonce = secrets.token_urlsafe(32)
 model_default = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+
+
+archive = directory / "source.tar.gz"
+digest = "74e3a684cd80168c1425a1193f938dfee088b6fb4c44e74649e139f1089bde8d"
+asset_size = 11777231
+release = "https://github.com/Soragi/santa-claw-brev/releases/download/workshop-source-1f960e3/santa-claw-launchable-source.tar.gz"
+
+
+def source_ready():
+    if (Path.home() / "santa-claw-launchable" / (".verified-" + digest)).is_file():
+        return True
+    try:
+        return archive.stat().st_size == asset_size and hashlib.sha256(archive.read_bytes()).hexdigest() == digest
+    except OSError:
+        return False
 
 
 def install(runtime, model, key):
@@ -44,7 +63,14 @@ class Page(BaseHTTPRequestHandler):
         <p><a href="https://build.nvidia.com/" target="_blank" rel="noreferrer">Get a key from NVIDIA Build ↗</a></p>
         <button>Start my workshop →</button></form>"""
         phase = state
-        body = {"setup":form, "source":"<p>Application source unavailable. Ask the organizer to stage the verified workshop archive, then retry.</p>"+form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
+        if phase in ("source", "setup", "failed") and not source_ready():
+            phase = "source"
+        elif phase == "source":
+            phase = "setup"
+        source_form = f"""<h2>Load the workshop files</h2><p>Download the signed-in GitHub release file, or get it from your organizer. Upload it here to unlock model setup.</p>
+        <p><a href="{release}" rel="noreferrer">Download workshop archive</a></p>
+        <form method="post" action="/source/{nonce}" enctype="multipart/form-data"><label>Workshop archive<input required type="file" name="archive" accept=".gz"></label><button>Verify workshop archive</button></form>"""
+        body = {"setup":form, "source":source_form, "failed":"<p>Installation stopped. Check the private installer diagnostics on this VM before retrying.</p>"+form,
                 "installing":"<progress aria-label='Installing workshop'></progress><p>Open <strong>Santa Claw Village</strong> from your Brev instance.</p>",
                 "ready":"<p>Your workshop is ready. Open <strong>Enter Santa Claw Village</strong> on your Brev instance page.</p>"}[phase]
         refresh = '<meta http-equiv="refresh" content="5">' if phase == "installing" else ""
@@ -61,8 +87,40 @@ class Page(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(page.encode())
 
+    def upload_source(self):
+        try:
+            size = int(self.headers.get("Content-Length", 0))
+            if not 0 < size <= asset_size + 16384:
+                return self.send_error(413)
+            with lock:
+                if state in ("installing", "ready"):
+                    return self.send_error(409)
+                content_type = self.headers.get("Content-Type", "")
+                if not content_type.startswith("multipart/form-data;"):
+                    return self.send_error(415)
+                header = ("Content-Type: " + content_type + "\r\n\r\n").encode("ascii")
+                message = BytesParser(policy=policy.default).parsebytes(header + self.rfile.read(size))
+                parts = list(message.iter_parts())
+                if len(parts) != 1 or parts[0].get_param("name", header="content-disposition") != "archive":
+                    return self.send_error(400)
+                data = parts[0].get_payload(decode=True) or b""
+                if hashlib.sha256(data).hexdigest() != digest:
+                    return self.send_error(422, "Archive does not match the workshop release. Go back and select the linked file.")
+                with tempfile.NamedTemporaryFile(dir=directory, delete=False) as staged:
+                    staged.write(data)
+                os.replace(staged.name, archive)
+        except (ValueError, UnicodeError):
+            return self.send_error(400)
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.end_headers()
+
     def do_POST(self):
-        if self.path != "/" or self.headers.get("Sec-Fetch-Site") == "cross-site":
+        if self.headers.get("Sec-Fetch-Site") == "cross-site":
+            return self.send_error(403)
+        if self.path == "/source/" + nonce:
+            return self.upload_source()
+        if self.path != "/":
             return self.send_error(403)
         try:
             size = int(self.headers.get("Content-Length", 0))
@@ -77,6 +135,8 @@ class Page(BaseHTTPRequestHandler):
         global state
         with lock:
             if state in ("setup","source","failed"):
+                if not source_ready():
+                    return self.send_error(409, "Load the workshop archive first")
                 state = "installing"
                 threading.Thread(target=install,args=(runtime,model,key),daemon=True).start()
         self.send_response(303)
