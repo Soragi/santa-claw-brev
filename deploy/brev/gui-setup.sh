@@ -8,7 +8,6 @@ base=$(getent passwd "$owner" | cut -d: -f6)/.local/share/santa-claw-onboarding
 sudo install -d -o "$owner" -m 700 "$base"
 sudo -Hu "$owner" tee "$base/install.sh" >/dev/null <<'SANTA_PAYLOAD'
 #!/bin/bash
-# Paste this complete script into a Brev VM Mode Launchable.
 set +x
 set -euo pipefail
 umask 077
@@ -81,7 +80,7 @@ fi
 START
 as_owner tee "$unitdir/$service" >/dev/null <<'UNIT'
 [Unit]
-Description=Santa Claw CPU workshop with NVIDIA hosted inference
+Description=Santa Claw
 After=nemoclaw-openshell-gateway.service
 
 [Service]
@@ -138,7 +137,7 @@ exec "$node" "$HOME/.config/santa-claw-launchable/village.cjs"
 WELCOME
 as_owner tee "$unitdir/santa-claw-welcome.service" >/dev/null <<'UNIT'
 [Unit]
-Description=Santa Claw authenticated Brev link destination
+Description=Village link
 After=santa-claw-launchable.service
 Requires=santa-claw-launchable.service
 [Service]
@@ -151,7 +150,7 @@ userctl daemon-reload
 userctl enable "$service" santa-claw-welcome.service
 ready() { curl --silent --fail --max-time 40 http://127.0.0.1:4310/santa/api/ready | python3 -c 'import json,sys;sys.exit(json.load(sys.stdin).get("ok") is not True)' 2>/dev/null; }
 if ! userctl is-active --quiet "$service" || ! ready; then
-  echo '2/3 · Starting agents, connecting inference and building the village…'
+  echo '2/3 · Starting workshop'
   keyfile="/run/user/$uid/santa-claw-launch.key"
   trap 'as_owner rm -f -- "$keyfile"' EXIT
   as_owner install -m 600 /dev/null "$keyfile"
@@ -274,13 +273,15 @@ UNIT
 ctl=(sudo -Hu "$owner" env XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" systemctl --user)
 sudo -Hu "$owner" tee "$base/wait.py" >/dev/null <<'PYTHON'
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import subprocess
 class Waiting(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type","text/html; charset=utf-8")
         self.send_header("Cache-Control","no-store")
         self.end_headers()
-        self.wfile.write(b'<meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="5;url=/"><title>Santa Claw Village</title><body style="background:#151815;color:white;font:20px system-ui;padding:10vw"><h1 style="color:#a8dc61">Santa Claw Village</h1><p>Waiting for workshop setup. This page refreshes automatically.</p><p>For installation status, open Santa Claw Setup on your Brev instance.</p>')
+        failed=subprocess.run(['systemctl','--user','is-failed','--quiet','santa-claw-launchable.service']).returncode==0
+        self.wfile.write(b'<meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="5;url=/"><title>Santa Claw Village</title><body style="background:#151815;color:white;font:20px system-ui;padding:10vw"><h1 style="color:#a8dc61">Santa Claw Village</h1><p>'+(b'Installation stopped. Open Santa Claw Setup on your Brev instance for recovery.' if failed else b'Waiting for workshop setup. This page refreshes automatically.')+b'</p>')
 ThreadingHTTPServer(("0.0.0.0",4311),Waiting).serve_forever()
 PYTHON
 sudo -Hu "$owner" tee "$unitdir/santa-claw-wait.service" >/dev/null <<'UNIT'
