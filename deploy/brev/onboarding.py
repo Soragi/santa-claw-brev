@@ -20,9 +20,9 @@ model_default = "nvidia/nemotron-3.5-super-vl-120b-a12b"
 
 
 archive = directory / "source.tar.gz"
-digest = "ea005e1563f08724b7b4262f07ea6f2553aa6970e18877de24f047970350c27b"
-asset_size = 11798198
-release = "https://github.com/Soragi/santa-claw-brev/releases/download/workshop-source-7bfa654/santa-claw-launchable-source.tar.gz"
+digest = "d89618a77bbc06e6ffe9cd57809510897f78d73f98c2dab974b4705561293232"
+asset_size = 11803716
+release = "https://github.com/Soragi/santa-claw-brev/releases/download/workshop-source-e530f07/santa-claw-launchable-source.tar.gz"
 
 
 def source_ready():
