@@ -6,7 +6,7 @@
 
 Launch a CPU VM and open **Set up Santa Claw**. Choose Hermes or OpenClaw, keep the recommended NVIDIA Nemotron model or enter a compatible model ID, and enter your NVIDIA Build API key. Click **Start my workshop**. Once ready, open **Enter Santa Claw Village** on your instance page.
 
-Organizers can configure the two secure links using the [Launchable guide](docs/brev-launchable.md).
+Organizers can configure setup, village and native dashboard Secure Links using the [Launchable guide](docs/brev-launchable.md).
 
 ### Your first challenge on Brev
 

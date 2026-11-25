@@ -132,6 +132,9 @@ as_owner tee "$conf/welcome" >/dev/null <<'WELCOME'
 set -eu
 cd "$HOME/santa-claw-launchable/deploy"
 node=$(python3 -c 'import launcher,os;print(launcher.ensure_node(dict(os.environ)))')
+if [[ ${1:-} == dashboard ]]; then
+  exec "$node" brev/dashboard-relay.mjs
+fi
 exec "$node" "$HOME/.config/santa-claw-launchable/village.cjs"
 WELCOME
 as_owner tee "$unitdir/santa-claw-welcome.service" >/dev/null <<'UNIT'
@@ -142,6 +145,20 @@ Requires=santa-claw-launchable.service
 [Service]
 ExecStart=/bin/bash %h/.config/santa-claw-launchable/welcome
 Restart=on-failure
+[Install]
+WantedBy=default.target
+UNIT
+as_owner tee "$unitdir/santa-claw-dashboard.service" >/dev/null <<'UNIT'
+[Unit]
+Description=Santa Claw Agent Dashboard on Brev port 4313
+After=santa-claw-launchable.service
+Requires=santa-claw-launchable.service
+
+[Service]
+ExecStart=/bin/bash %h/.config/santa-claw-launchable/welcome dashboard
+UMask=0077
+Restart=on-failure
+
 [Install]
 WantedBy=default.target
 UNIT
@@ -160,4 +177,7 @@ ready || { echo 'Village readiness check failed.' >&2; exit 1; }
 userctl stop santa-claw-wait.service 2>/dev/null || true
 userctl start santa-claw-welcome.service
 curl --fail --silent --retry 8 --retry-connrefused --retry-delay 1 http://127.0.0.1:4311/santa/api/ready >/dev/null
+if ! userctl enable --now santa-claw-dashboard.service; then
+  echo 'The village is ready. Agent Dashboard needs attention; see santa-claw-dashboard.service.' >&2
+fi
 echo '3/3 · Village ready. Select Enter Santa Claw Village on the Brev instance page.'
