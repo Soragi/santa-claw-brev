@@ -22,6 +22,20 @@ test('source, mail and vision inference use the selected native transport rather
   module.exports(payload,(_binary,args,options)=>{used=true;assert.equal(args.at(-1),'https://integrate.api.nvidia.com/v1/chat/completions');assert.ok(args.includes('Authorization: Bearer '+nvidia));assert.equal(JSON.parse(options.input).model,payload.model);return JSON.stringify(reply);});assert.ok(used);
  }
 });
+test('GB10 qualification requires a real structured MCP call through the selected provider',async()=>{
+ const {checkWorkshopToolCall}=await import('../deploy/check-gb10.mjs');
+ const module={exports:{}};
+ vm.runInNewContext(readFileSync(new URL('../deploy/mcp-infer.cjs',import.meta.url),'utf8'),{module,require,nativeInferenceTransport:()=>({baseUrl:'http://host.openshell.internal:8000/v1',apiKey:local})});
+ const callFor=message=>async(payload)=>module.exports({...payload,model:'nvidia/model'},(_binary,args,options)=>{
+  assert.equal(args.at(-1),'http://host.openshell.internal:8000/v1/chat/completions');
+  assert.ok(args.includes('Authorization: Bearer '+local));
+  assert.equal(JSON.parse(options.input).tool_choice,'auto');
+  return JSON.stringify({choices:[{message}]});
+ });
+ await checkWorkshopToolCall(callFor({tool_calls:[{function:{name:'assess_reply',arguments:'{"decision":"approve"}'}}]}));
+ await assert.rejects(checkWorkshopToolCall(callFor({content:'{"decision":"approve"}'})),/no structured tool call/);
+ await assert.rejects(checkWorkshopToolCall(callFor({tool_calls:[{function:{name:'assess_reply',arguments:'{"decision":"reject"}'}}]})),/incorrect arguments/);
+});
 test('only the exact credential-bound NVIDIA model policy survives as native inference',()=>{
  const rule=structuredClone(nativeNvidiaRule);Object.assign(rule.endpoints[0],{ports:[443],graphqlMaxBodyBytes:0,jsonRpcMaxBodyBytes:0,tls:'',allowEncodedSlash:false});
  assert.ok(isNativeNvidiaRule('native_nvidia_inference',rule));assert.ok(isNativeNvidiaRule('_provider_nemoclaw_nvidia_prod_v1',rule));assert.equal(isNativeNvidiaRule('random',rule),false);

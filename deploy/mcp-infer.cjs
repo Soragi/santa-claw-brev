@@ -15,6 +15,7 @@ module.exports=function inferPostOffice(p,execFileSync=require('node:child_proce
  const raw=execFileSync('curl',['--fail','--silent','--show-error','--max-time',String(timeout),...auth,'-H','Content-Type: application/json','--data-binary','@-',nativeRoute.baseUrl+'/chat/completions'],{input:JSON.stringify(body),encoding:'utf8',timeout:(timeout+2)*1000,maxBuffer:1500000,stdio:['pipe','pipe','pipe']});
  const result=JSON.parse(raw),message=result.choices?.[0]?.message,calls=message?.tool_calls||[];if(calls.length>1)throw Error('Choose one MCP tool per turn');let text;
  if(calls.length){const call=calls[0].function,args=typeof call.arguments==='string'?JSON.parse(call.arguments):call.arguments;if(call.name==='finish_turn')text=JSON.stringify({done:true,summary:typeof args.summary==='string'?args.summary.slice(0,1200):'Turn finished.'});else{if(!allowed.includes(call.name))throw Error('Unknown MCP tool');text=JSON.stringify({name:call.name,arguments:args});}}
+ else if(p.requireStructured===true)throw Error('Local inference returned no structured tool call');
  else if(typeof message?.content==='string'&&message.content.trim()){text=message.content;if(p.requiredTool){try{const value=JSON.parse(text);if(value&&typeof value==='object'&&!value.name&&(value.letterId||p.requiredTool==='assess_reply'&&['approve','reject'].includes(value.decision)))text=JSON.stringify({name:p.requiredTool,arguments:value});}catch{}}}else throw Error('Local inference returned no MCP decision');
  return {text,tools:[],durationMs:Date.now()-started};
 };

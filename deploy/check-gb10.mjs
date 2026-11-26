@@ -10,6 +10,15 @@ export function hostChecks(snapshot){return [
 export function profileDrift(model,reference=profile.model){if(!model)return [];const out=[];if(![reference.servedName,reference.repository].includes(model.id))out.push('Served model '+model.id+' differs from the reference profile ('+reference.servedName+'). Validate tool calling and output budgets for it.');const length=model.max_model_len;if(length&&length!==reference.maxModelLength)out.push('Served context '+length+' differs from the reference '+reference.maxModelLength+'. Larger contexts reduce KV-cache headroom; re-check memory and the documented budgets.');return out;}
 async function capture(command,args,timeout=15000){try{return (await exec(command,args,{timeout,maxBuffer:1000000})).stdout.trim();}catch{return null;}}
 async function request(url,body){const response=await fetch(url,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(body?60000:5000)});if(!response.ok)throw Error('HTTP '+response.status);const chunks=[];let n=0;for await(const part of response.body){n+=part.length;if(n>1000000)throw Error('Response too large');chunks.push(part);}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+export async function checkWorkshopToolCall(nativeCall){
+ const result=await nativeCall({
+  op:'mcp-infer',agent:'santa-postmaster',requiredTool:'assess_reply',requireStructured:true,observations:[],
+  prompt:'Use assess_reply with decision approve. The letter asks for a book for Alex, and the reply confirms the same gift and recipient.',
+  mcpTools:[{name:'assess_reply',description:'Assess whether a reply matches the source letter.',inputSchema:{type:'object',properties:{decision:{type:'string',enum:['approve','reject']}},required:['decision'],additionalProperties:false}}]
+ },65);
+ const reply=JSON.parse(result.text);
+ if(reply.name!=='assess_reply'||reply.arguments?.decision!=='approve')throw Error('The structured tool call was missing or had incorrect arguments.');
+}
 export async function checkGb10({stage='runtime',smoke=false}={}){
  const snapshot={platform:os.platform(),arch:os.arch(),node:process.versions.node,gpu:await capture('nvidia-smi',['--query-gpu=name,compute_cap','--format=csv,noheader']),docker:!!await capture('docker',['info','--format','{{.Architecture}}'])},checks=hostChecks(snapshot);snapshot.totalMemoryGiB=Math.round(os.totalmem()/2**30);const warnings=[];if(snapshot.totalMemoryGiB<100)warnings.push('Smaller-memory Spark: choose a qualified serving profile and validate memory headroom; this reference targets 128 GB-class hardware and does not guarantee model fit.');
  let inventory=null,route=null,model=null;
@@ -20,16 +29,28 @@ export async function checkGb10({stage='runtime',smoke=false}={}){
  if(stage==='runtime')route=inventory?.find(r=>(r.name||r.sandboxName)===process.env.SANTA_SANDBOX);
  const backend=route?.provider==='ollama-local'?'ollama':'vllm',port=backend==='ollama'?(process.env.NEMOCLAW_OLLAMA_PORT||'11434'):(process.env.NEMOCLAW_VLLM_PORT||String(profile.model.port));if(!/^\d+$/.test(port)||Number(port)<1024||Number(port)>65535)throw Error('Invalid operator vLLM port');
  const {isLocalRoute}=await import('../server/inference-policy.mjs');const nativeProbe=!!route&&/^[a-z][a-z0-9-]{1,40}$/.test(process.env.SANTA_SANDBOX||'')&&isLocalRoute({provider:route.provider,endpoint:route.endpointUrl||route.nativeLocalProviderAttachment?.endpointUrl||null})&&versionAtLeast(cli,'0.0.137')&&versionAtLeast(openshell,'0.0.116');
- const throughSandbox=async(suffix,body)=>{const args=[process.env.SANTA_SANDBOX,'exec','--no-tty','--timeout','75','--','curl','--fail','--silent','--show-error','--max-time',body?'60':'10'];if(body)args.push('-H','Content-Type: application/json','--data',JSON.stringify(body));args.push('https://inference.local/v1/'+suffix);const value=await capture('nemoclaw',args,90000);if(!value)throw Error('Native local inference probe failed');return JSON.parse(value);};
+ // Use the workshop's native transport so the sandbox-scoped provider and its
+ // supervisor-issued reference are resolved exactly as in a real challenge.
+ const nativeCall=nativeProbe?(await import('../server/private-runtime.mjs')).call:null;
  const expected=(stage==='runtime'?route?.model:null)||process.env.SANTA_LOCAL_MODEL;const choose=catalog=>{const candidates=Array.isArray(catalog?.data)?catalog.data:[];return expected?candidates.find(m=>m.id===expected):candidates.find(m=>m.id===profile.model.servedName||m.id===profile.model.repository||m.root===profile.model.repository);};
  try{model=choose(await request('http://127.0.0.1:'+port+'/v1/models'));}catch{}
- if(!model&&nativeProbe)try{model=choose(await throughSandbox('models'));}catch{}
+ if(!model&&nativeCall)try{const {models}=await nativeCall({op:'model-catalog'},25);model=choose({data:models.map(id=>({id}))});}catch{}
  warnings.push(...profileDrift(model));checks.push({name:'Local '+backend+' model',passed:!!model,detail:model?.id||'No matching local catalog. Configure the host model or repair its native authenticated local route.'});
  if(stage==='runtime'){
  const name=process.env.SANTA_SANDBOX;route=inventory?.find(r=>(r.name||r.sandboxName)===name);let valid=false;if(route){const {isLocalRoute}=await import('../server/inference-policy.mjs');try{if(!isLocalRoute({provider:route.provider,endpoint:route.endpointUrl||route.nativeLocalProviderAttachment?.endpointUrl||null}))throw Error('Not local');valid=['vllm-local','ollama-local','llama-cpp-local','compatible-endpoint'].includes(route.provider);if(model&&route.model!==model.id)valid=false;}catch{}}
  checks.push({name:'Selected sandbox local route',passed:valid,detail:valid?'Registered local provider/model match':'Set SANTA_SANDBOX to a local sandbox and verify its route/model; cloud and unverified routes are not a GB10 qualification.'});
  }
- if(smoke&&model&&hostChecks(snapshot).every(c=>c.passed))try{const smokeRequest=body=>nativeProbe?throughSandbox('chat/completions',body):request('http://127.0.0.1:'+port+'/v1/chat/completions',body);const result=await smokeRequest({model:model.id,messages:[{role:'user',content:'Call santa_status_probe once. Do not answer in prose.'}],tools:[{type:'function',function:{name:'santa_status_probe',description:'Check readiness',parameters:{type:'object',properties:{},additionalProperties:false}}}],tool_choice:'auto',max_tokens:256,temperature:0,chat_template_kwargs:{enable_thinking:false}});const calls=result.choices?.[0]?.message?.tool_calls||[];const call=calls.find(c=>c.function?.name==='santa_status_probe');if(!call)throw Error('No structured tool call');JSON.parse(call.function.arguments);checks.push({name:'Live local structured tool call',passed:true,detail:(nativeProbe?'The selected OpenShell local inference route':'The host local model')+' returned a function call. This probe does not execute an agent tool.'});}catch{checks.push({name:'Live local structured tool call',passed:false,detail:'Check model parser/template, local inference health and output budget.'});}
+ if(smoke&&model&&hostChecks(snapshot).every(c=>c.passed))try{
+  if(nativeCall)await checkWorkshopToolCall(nativeCall);
+  else{
+   if(stage==='runtime')throw Error('No verified sandbox route');
+   const result=await request('http://127.0.0.1:'+port+'/v1/chat/completions',{model:model.id,messages:[{role:'user',content:'Call santa_status_probe once. Do not answer in prose.'}],tools:[{type:'function',function:{name:'santa_status_probe',description:'Check readiness',parameters:{type:'object',properties:{},additionalProperties:false}}}],tool_choice:'auto',max_tokens:256,temperature:0,chat_template_kwargs:{enable_thinking:false}});
+   const call=result.choices?.[0]?.message?.tool_calls?.find(c=>c.function?.name==='santa_status_probe');
+   if(!call)throw Error('No structured tool call');
+   JSON.parse(call.function.arguments);
+  }
+  checks.push({name:'Live local structured tool call',passed:true,detail:(nativeCall?'The selected OpenShell local inference route':'The host local model')+' returned a structured function call.'});
+ }catch{checks.push({name:'Live local structured tool call',passed:false,detail:'The model could not return the expected function through the selected inference route. Check native model access and the serving tool parser.'});}
  }
  return {target:profile.target,stage,passed:checks.every(c=>c.passed),snapshot,model:model?{id:model.id,maxModelLength:model.max_model_len||null}:null,checks,warnings,scope:'Read-only host/native/model probes; no package installation, weight download, sandbox mutation or certification of the full agent workflow.'};
 }

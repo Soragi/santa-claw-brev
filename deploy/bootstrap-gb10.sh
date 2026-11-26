@@ -212,8 +212,20 @@ try {
 }' "$SANTA_NATIVE_REF"; then
    fail 'Could not verify that the active NemoClaw CLI matches this installer’s pinned source commit. No shared runtime was changed.'
   fi
-  # Resume only this installer's target. Never use --fresh or --recreate.
-  nemoclaw onboard --name "$SANTA_NAME" --agent openclaw --non-interactive --resume 9>&-
+  # Native onboarding can finish before the app's first smoke check passes.
+  if nemoclaw list --json | node -e '
+const fs = require("node:fs");
+const [name, model] = process.argv.slice(1);
+const inventory = JSON.parse(fs.readFileSync(0, "utf8"));
+const complete = inventory.incompleteOnboarding?.sandboxName !== name &&
+  inventory.sandboxes?.some(row => row.name === name && row.agent === "openclaw" &&
+    row.model === model && row.provider === "vllm-local" && !row.recoveredFromGateway);
+process.exitCode = complete ? 0 : 1;' "$SANTA_NAME" "$SANTA_LOCAL_MODEL"; then
+   echo 'Native onboarding is complete for this sandbox. Checking the running local route and continuing Santa Claw setup.'
+  else
+   # Resume only this installer's target. Never use --fresh or --recreate.
+   nemoclaw onboard --name "$SANTA_NAME" --agent openclaw --non-interactive --resume 9>&-
+  fi
  fi
 fi
 # Existing native tools are accepted only after local-route and tool-call verification.
