@@ -1,5 +1,15 @@
 # Santa Claw
 
+A local-first, Christmas-themed agent workshop. Design a printable 3D Claw, give it tools and skills, then deploy it in Santa’s village. Santa coordinates agents running locally in a NemoClaw-managed OpenShell sandbox. Choose local inference or a hosted provider when you deploy.
+
+## Deploy on a clean GB10
+
+Use the [step-by-step GB10 deployment guide](deploy/gb10/README.md) for a 64 GB or 128 GB Spark. Start with local Qwen in vLLM, connect it to an OpenClaw sandbox in NemoClaw and OpenShell, then launch Santa Claw Village.
+
+- **64 GB** · Use NVIDIA's managed Qwen vLLM profile with automatic serving-profile selection, then attach Santa Claw to that sandbox. [Model and sandbox setup](deploy/gb10/README.md#2-start-qwen-in-vllm)
+- **128 GB** · Use the pinned installer to provision managed Qwen and the workshop service, or connect Santa Claw to your own local vLLM server. [Managed installation](docs/one-command-install.md)
+- **Verify the workshop** · Open the village and run a real agent task after the native sandbox, tool-call and vision checks pass. [End-to-end test](deploy/gb10/README.md#5-run-an-end-to-end-test)
+
 ## Launch on NVIDIA Brev (CPU, hosted inference)
 
 [Launch Santa Claw on Brev](https://brev.nvidia.com/launchable/deploy/now?launchableID=env-3MHFwePd3IP0qooURV1nIBbtjp9)
@@ -15,14 +25,6 @@ Organizers can configure setup, village and native dashboard Secure Links using 
 3. Choose its MCP permissions and test the boundaries. If a selection is incorrect, adjust it and retry the quiz.
 4. Compare ten proposed replies with their source letters. Approve the five accurate replies and reject the five incorrect ones. Check the child's name, requested gift, and any delivery promise.
 5. Click **Deploy Agent**. A score of at least **5/6** on the model check qualifies the agent. Watch it handle a letter autonomously, then use bulk send to clear the remaining queue. The Post Office shows a green check when the challenge is complete.
-
-A local-first, Christmas-themed agent workshop. Design a printable 3D Claw, give it tools and skills, then deploy it in Santa’s village. Santa coordinates agents running locally in a NemoClaw-managed OpenShell sandbox. Choose local inference or a hosted provider when you deploy.
-
-## Install on a clean GB10
-
-Start with the [GB10 deployment guide](deploy/gb10/README.md). It takes you from first boot through **Qwen in local vLLM**, NemoClaw/OpenShell setup, Santa Claw Village, and a first agent test. It covers a managed Qwen setup for 64 GB and 128 GB devices, an operator-run model option, and checks for tool calling and image inference.
-
-For a 128 GB-class device, the [pinned managed installer](docs/one-command-install.md) can provision the model and the workshop service together. The guide also covers the device-specific vLLM setup for smaller-memory configurations.
 
 ## Workshop
 
