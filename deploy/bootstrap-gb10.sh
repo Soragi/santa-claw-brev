@@ -174,6 +174,14 @@ if [ "$SANTA_REUSE" != 1 ]; then
  export NEMOCLAW_SINGLE_SESSION=1 NEMOCLAW_NON_INTERACTIVE=1 NEMOCLAW_NON_INTERACTIVE_SUDO_MODE=prompt NEMOCLAW_ACCEPT_THIRD_PARTY_SOFTWARE=1
  if ! command -v nemoclaw >/dev/null; then
   SANTA_NATIVE_SOURCE="$SANTA_DATA_BASE/native-$SANTA_NATIVE_REF"
+  [ ! -L "$SANTA_NATIVE_SOURCE" ] && [ ! -L "$SANTA_NATIVE_SOURCE/.git" ] || fail 'Unexpected symlink in native source cache.'
+  if [ -d "$SANTA_NATIVE_SOURCE/.git" ] &&
+     [ "$(git -C "$SANTA_NATIVE_SOURCE" rev-parse --verify HEAD 2>/dev/null || true)" = "$SANTA_NATIVE_REF" ] &&
+     [ "$(git -C "$SANTA_NATIVE_SOURCE" remote get-url origin 2>/dev/null || true)" = https://github.com/NVIDIA/NemoClaw.git ] &&
+     ! git -C "$SANTA_NATIVE_SOURCE" diff --quiet HEAD --; then
+   echo "Preserving the modified native source at $SANTA_NATIVE_SOURCE. Fetching the pinned revision in a separate directory."
+   SANTA_NATIVE_SOURCE="$(mktemp -d "$SANTA_DATA_BASE/native-$SANTA_NATIVE_REF.retry.XXXXXX")"
+  fi
   if [ ! -d "$SANTA_NATIVE_SOURCE/.git" ]; then (umask 022; git init -q "$SANTA_NATIVE_SOURCE"); fi
   if ! git -C "$SANTA_NATIVE_SOURCE" rev-parse --verify HEAD >/dev/null 2>&1; then
    SANTA_REMOTE="$(git -C "$SANTA_NATIVE_SOURCE" remote get-url origin 2>/dev/null || true)"
