@@ -4,11 +4,7 @@ A local-first, Christmas-themed agent workshop. Design a printable 3D Claw, give
 
 ## Deploy on a clean GB10
 
-Use the [step-by-step GB10 deployment guide](deploy/gb10/README.md) for a 64 GB or 128 GB Spark. Start with local Qwen in vLLM, connect it to an OpenClaw sandbox in NemoClaw and OpenShell, then launch Santa Claw Village.
-
-- **64 GB** · Use NVIDIA's managed Qwen vLLM profile with automatic serving-profile selection, then attach Santa Claw to that sandbox. [Model and sandbox setup](deploy/gb10/README.md#2-start-qwen-in-vllm)
-- **128 GB** · Use the pinned installer to provision managed Qwen and the workshop service, or connect Santa Claw to your own local vLLM server. [Managed installation](docs/one-command-install.md)
-- **Verify the workshop** · Open the village and run a real agent task after the native sandbox, tool-call and vision checks pass. [End-to-end test](deploy/gb10/README.md#5-run-an-end-to-end-test)
+Follow the [GB10 quick start](deploy/gb10/README.md) to install local Qwen and open Santa Claw Village on a 64 GB or 128 GB Spark.
 
 ## Launch on NVIDIA Brev (CPU, hosted inference)
 
