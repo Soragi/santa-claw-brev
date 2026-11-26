@@ -200,7 +200,18 @@ if re.search(r'^  revision: (.+)$',m,re.M).group(1)!=p['managedModel']['revision
 PYLOCK
   NEMOCLAW_INSTALL_REF="$SANTA_NATIVE_REF" bash "$SANTA_NATIVE_SOURCE/install.sh" --non-interactive --yes-i-accept-third-party-software 9>&-
  else
-  [[ "$(nemoclaw --version)" == *"$(pin native.version)"* ]] || fail 'Native version differs from this installer lock. No automatic shared-runtime upgrade is performed.'
+  # A commit-pinned source build can report the package version instead of the release tag.
+  # Host probe includes provenance even when a readiness finding gives it a nonzero exit.
+  if ! (nemoclaw host probe --json 2>/dev/null || true) | node -e '
+const fs = require("node:fs");
+try {
+  const report = JSON.parse(fs.readFileSync(0, "utf8"));
+  process.exitCode = report.provenance?.sourceRevision === process.argv[1] ? 0 : 1;
+} catch {
+  process.exitCode = 1;
+}' "$SANTA_NATIVE_REF"; then
+   fail 'Could not verify that the active NemoClaw CLI matches this installer’s pinned source commit. No shared runtime was changed.'
+  fi
   # Resume only this installer's target. Never use --fresh or --recreate.
   nemoclaw onboard --name "$SANTA_NAME" --agent openclaw --non-interactive --resume 9>&-
  fi

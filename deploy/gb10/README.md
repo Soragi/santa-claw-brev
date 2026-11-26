@@ -70,6 +70,7 @@ Leave that terminal open and go to [Santa Claw Village](http://127.0.0.1:4310/sa
 <summary>Setup stopped or the village won't open</summary>
 
 - If you closed the terminal or the download failed, reopen a terminal on the Spark, run `cd "$HOME/santa-claw-brev"`, then retry the command that stopped.
+- If vLLM reports low GPU memory or repeatedly restarts, run `nvidia-smi` on the Spark. An existing model server or GPU application can consume the shared memory Qwen needs. Close workloads you own and no longer need, then rerun the installer. The 128 GB profile needs roughly 49 GiB available to CUDA at startup. [NVIDIA vLLM troubleshooting](https://docs.nvidia.com/nemoclaw/latest/user-guide/openclaw/inference/local-inference/set-up-vllm)
 - If NVIDIA’s installer reports an unsafe npm directory, inspect the reported path with `namei -l`. If a reported directory is yours and is a real directory, remove group and world write access from that directory with `chmod go-w PATH`. [NVIDIA permission troubleshooting](https://github.com/NVIDIA/NemoClaw/blob/main/docs/reference/troubleshooting.mdx#permission-errors-during-installation)
 - On the 64 GB path, if NemoClaw is ready and Santa Claw reports a sandbox or model mismatch, use the sandbox name and exact model ID shown by `nemoclaw list` and `nemoclaw YOUR_SANDBOX status`.
 - After restarting the Spark, the 128 GB installer’s workshop service starts automatically. On the 64 GB path, wait for NemoClaw and vLLM, then run the same Santa Claw launch command again.
