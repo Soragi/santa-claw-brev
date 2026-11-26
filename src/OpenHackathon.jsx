@@ -1,22 +1,109 @@
-import React,{useState}from'react';
-import {Clock,Network,ShieldCheck,Send,Box,Play,Pause,RotateCcw,ArrowUpRight,Check,Download}from'lucide-react';
-import ConnectionHelp from './ConnectionHelp.jsx';
+import React, {useState} from 'react';
+import {ArrowUpRight, Code2, Download, FileCheck, CalendarDays, Newspaper} from 'lucide-react';
 import './open-hackathon.css';
-const labels={designer:'Designer',builder:'CAD Builder',inspector:'Print Inspector'};
-export default function OpenHackathon({value,projects=[],onAction,onDesign,onVillage,onSettings,busy}){
- const [pending,setPending]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[selected,setSelected]=useState(''),[role,setRole]=useState('designer'),[scopes,setScopes]=useState(['read_brief','read_design','revise_design']),[reset,setReset]=useState(false),[native,setNative]=useState(null),[form,setForm]=useState(null),[nativeId,setNativeId]=useState('');
- const v=value||{state:'not_started'},started=v.state!=='not_started',locked=busy||pending,r=v.revisions?.at(-1),bindings=v.bindings||[],eligible=projects.filter(p=>p.acceptedAt&&!p.departedAt&&!p.hidden&&!v.baselineProjects?.includes(p.id)),minutes=Math.ceil((v.timeRemaining??9000000)/60000);
- async function act(path,body={}){setPending(true);setError('');try{const result=await onAction('/hackathon/'+path,body);if(result?.message)setNotice(result.message);return result;}catch(e){setError(e.message);return null;}finally{setPending(false);}}
- return <main className="open-hackathon"><header className="hack-hero"><span className="eyebrow">OPEN HACKATHON · BUILD A REUSABLE AGENT TEAM</span><div className="hack-title"><div><h1>Santa’s Bauble Factory</h1><p>From customer brief to a validated print package.<br/>Your agents. Your design. Something to take home.</p></div><span className="hack-clock"><Clock size={19}/>{started?(v.judgingEnded?'Judging closed · keep building':minutes+' min remaining'):'150-minute sprint'}</span></div><div className="hack-tags"><span><Network size={14}/> MCP tools</span><span><ShieldCheck size={14}/> OpenShell</span><span><Send size={14}/> Telegram approval</span><span><Box size={14}/> Parametric CAD</span></div></header>
- <section className="hack-brief"><span className="eyebrow">SANTA NEEDS A NEW COLLECTION</span><h2>Build the workflow, then prove it can adapt.</h2><p>Create a personalized 60 mm Christmas bauble using up to four colors. Build three specialist Claws with your own system prompts, MCP permissions and at least one authored skill. Santa coordinates the team; independent tools decide whether the geometry passes.</p><div className="factory-pipeline">Brief <span>→</span> Santa <span>→</span> Designer <span>→</span> CAD Builder <span>→</span> Print Inspector <span>→</span> Telegram <span>→</span> Print package</div><div className="hack-goals"><article><b>01</b><h3>Design & build</h3><p>Choose parameters and connect tools. Core MCP tools build reliable geometry; advanced teams can author CadQuery Python. Four views must show the same model.</p></article><article><b>02</b><h3>Inspect & revise</h3><p>Check dimensions, connected geometry, features and slicing. At minute 120 Santa adds a change request. Preserve the hanging-loop dimensions.</p></article><article><b>03</b><h3>Approve & take home</h3><p>A paired human approves the exact qualified revision in Telegram. Queue it for the organizer and export your agents, CAD, views and validation evidence.</p></article></div><div className="factory-agenda">{(v.agenda||[]).map(a=><div key={a.label}><strong>{a.minutes} min</strong><span>{a.label}</span></div>)}</div><p className="hack-footnote">Advanced track: tree topper, with additional attachment, balance and weight review. No agent can start a printer. NVIDIA visualization skills require separately verified GPU services.</p></section>
- {error&&<p role="alert" className="hack-error">{error}</p>}{notice&&<p role="status" className="hack-callout">{notice}</p>}
- <section className="hack-controls"><div><h2>{started?'Your factory control room':'Before the clock starts'}</h2><p>{v.worker?.message||'Check the runtime, CAD worker, private MCP connector and Telegram approval owner.'}</p></div><div className="hack-actions"><button className="secondary" disabled={locked} onClick={()=>act('preflight')}>Check connections</button><button className="secondary" disabled={locked} onClick={async()=>{const x=await act('telegram/setup');if(x)setForm(x);}}>Telegram setup</button>{!started?<button className="primary" disabled={locked||!v.worker?.ready||!v.connector?.ready||!v.telegram?.ownerPaired} onClick={()=>act('start')}><Play size={15}/> Start 150-minute sprint</button>:<><button className="primary" disabled={locked} onClick={onDesign}>Create specialist Claw <ArrowUpRight size={15}/></button><button className="secondary" disabled={locked} onClick={async()=>setNative(await act('openclaw'))}>{v.agentRuntime==='hermes'?'Hermes':'OpenClaw'} access</button></>}</div><div className="hack-status"><span className={v.worker?.ready?'ok':''}>CAD worker · {v.worker?.ready?'ready':'setup required'}</span><span className={v.connector?.ready?'ok':''}>OpenShell MCP · {v.connector?.ready?'verified':'check required'}</span><span className={v.telegram?.ownerPaired?'ok':''}>Telegram · {v.telegram?.ownerPaired?'paired':'pair required'}</span><span className={v.worker?.profile?.qualified?'ok':''}>Printer · {v.worker?.profile?.qualified?v.worker.profile.id:'qualification required'}</span></div>
- {form?.setupUrl&&<div className="hack-callout"><div><strong>Private Telegram setup</strong><p>Forward this loopback port from the deployment host, then open the form.</p><a href={form.setupUrl} target="_blank" rel="noreferrer">Open private setup form ↗</a><ConnectionHelp port={form.setupPort}/></div></div>}{v.telegram?.pairCode&&<p className="hack-callout">Message @{v.telegram.botName} with <code>/start {v.telegram.pairCode}</code> from your private account.</p>}
- {native&&<details className="hack-doc" open><summary>Native runtime access</summary><p>{native.message}</p>{native.url&&<a href={native.url} target="_blank" rel="noreferrer">Open dashboard ↗</a>}{native.commands?.map(c=><code key={c}>{c}</code>)}{native.canImport!==false&&<><label>Import your authored native agent<input value={nativeId} onChange={e=>setNativeId(e.target.value)} placeholder="Native agent identifier" maxLength={63}/></label><button className="secondary" disabled={locked||!nativeId||!started} onClick={async()=>{const x=await act('import-native',{agent:nativeId});if(x)setSelected(x.id);}}>Copy into factory</button></>}</details>}
- {started&&<><div className="hack-connector"><label>New specialist Claw<select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Choose an accepted Claw…</option>{eligible.map(p=><option value={p.id} key={p.id}>{p.spec.name}</option>)}</select></label><label>Factory role<select value={role} onChange={e=>{setRole(e.target.value);setScopes(v.roles[e.target.value]);}}>{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><details><summary>MCP permissions · {scopes.length} selected</summary><div className="hack-scopes">{(v.tools||[]).filter(t=>v.roles?.[role]?.includes(t.name)).map(t=><label key={t.name}><input type="checkbox" checked={scopes.includes(t.name)} onChange={e=>setScopes(e.target.checked?[...scopes,t.name]:scopes.filter(n=>n!==t.name))}/><span><b>{t.name}</b><small>{t.description}</small></span></label>)}</div></details><button className="secondary" disabled={locked||!selected||!scopes.length} onClick={()=>act('connect',{project:selected,role,scopes})}>Connect specialist</button></div><div className="hack-team">{bindings.map(b=><div key={b.project}><Check size={16}/><strong>{b.name}</strong><span>{labels[b.role]} · {b.scopes.length} tools</span></div>)}</div><div className="hack-actions"><button className="primary" disabled={locked||bindings.length!==3||v.state==='paused'} onClick={()=>act('deploy',{projects:bindings.map(b=>b.project)})}>Deploy agent team</button><button className="secondary" disabled={locked} onClick={()=>act(v.state==='paused'?'resume':'pause')}>{v.state==='paused'?<Play size={15}/>:<Pause size={15}/>} {v.state==='paused'?'Resume':'Pause'}</button><button className="secondary" disabled={locked} onClick={onVillage}>Watch team in village</button><button className="secondary" disabled={locked} onClick={()=>act('validate')}>Check evidence</button><button className="secondary" disabled={locked} onClick={()=>setReset(!reset)}><RotateCcw size={14}/> Restore checkpoint</button></div>{reset&&<div className="hack-callout"><div><strong>Restore the pre-factory checkpoint?</strong><p>Cancels factory jobs and approvals, restores saved workshop agents and removes new factory Claws from the roster. Export first. Already released physical prints cannot be recalled.</p></div><button className="secondary" disabled={locked} onClick={async()=>{if(await act('reset',{confirm:'RESET HACKATHON'}))setReset(false);}}>Restore checkpoint</button></div>}
- {v.changeRequested&&<div className="factory-change" role="status"><strong>Santa’s change request</strong><p>{v.changeRequest}</p></div>}
- <section className="factory-design"><div><span className="eyebrow">CURRENT ORNAMENT</span><h2>{r?r.design.title:'Waiting for your Designer'}</h2><p>{r?'Revision '+r.number+' · '+r.design.diameter+' mm · '+r.design.palette.length+' colors':'Ask your Designer to create the first revision through MCP.'}</p>{r?.build&&<a className="primary" href={'/santa/api/hackathon/revisions/'+r.id+'/download'}><Download size={16}/> Download design & agents</a>}<p className="hack-footnote">Development downloads are always available after building. Print submission requires a qualified printer profile, independent inspection and exact Telegram approval.</p></div><div className="factory-views">{['front','side','top','perspective'].map(view=><figure key={view}>{r?.build?<img src={'/santa/api/hackathon/revisions/'+r.id+'/views/'+view} alt={view+' view of current CAD revision'}/>:<div className="factory-placeholder"><Box size={38}/></div>}<figcaption>{view}</figcaption></figure>)}</div></section>
- <div className="hack-goals"><article><h3>Build & inspection jobs</h3>{v.jobs?.slice(-5).map(j=><p key={j.id}><strong>{j.type} · {j.state}</strong>{j.error&&<small>{j.error}</small>}</p>)}{r?.validation?.checks?.map(c=><p key={c.label} className={c.passed?'ok':''}>{c.passed?'✓':'○'} {c.label}</p>)}</article><article><h3>Human approval</h3>{v.proposals?.slice(-4).map(p=><p key={p.id}>{p.revision===r?.id?'Current revision':'Previous revision'} · <strong>{p.status}</strong></p>)}<p>Inspect → send four views → human decision → queue. Changes require fresh approval.</p></article><article><h3>Organizer print queue</h3>{v.receipts?.map(x=><p key={x.id}>Revision {v.revisions.find(r=>r.id===x.revision)?.number} · <strong>{x.state}</strong>{!x.judged?' · after judging deadline':''}</p>)}<p>Physical printing is released by an operator after judging.</p></article></div>
- <details className="hack-doc"><summary>{v.validation?.passed?'✓ Factory assignment completed':'Completion & scoring evidence'}</summary>{v.validation?.checks?.map(c=><p key={c.label} className={c.passed?'ok':''}>{c.passed?'✓':'○'} {c.label}</p>)}<p>Engineering 30 · reusable workflow 30 · design 25 · security / approval 15. Printability is mandatory; organizers judge the evidence.</p></details></>}
- <details className="hack-doc"><summary>MCP documentation & skills</summary><p>Connect installs FACTORY_CONNECTOR.md in the agent workspace. Discover permitted tools with its private CLI, or configure the same command as a stdio MCP server. Create your own role prompt and custom skill; no solution is supplied here.</p><p>Optional NVIDIA skills: CAD-to-SimReady for USD preparation and Omniverse Realtime Viewer for supported GPU visualization. These do not establish print readiness.</p><a href="https://github.com/NVIDIA/skills" target="_blank" rel="noreferrer">NVIDIA skills catalog ↗</a>{(v.tools||[]).map(t=><details key={t.name}><summary>{t.name}</summary><p>{t.description}</p><pre>{JSON.stringify(t.inputSchema,null,2)}</pre></details>)}</details></section><footer className="hack-footer"><p>Take home your agent team, parametric CAD, four views and inspection evidence.</p><button className="text-button" onClick={onSettings}>Settings & export all agents</button></footer></main>;
+
+const catalog = 'https://build.nvidia.com/spark/nemoclaw-applications';
+const recipes = [
+  {
+    id: 'news-digest',
+    name: 'Daily Personal News Digest',
+    icon: Newspaper,
+    idea: 'Build an industry briefing for your team using a few approved sources and your own ranking criteria.',
+  },
+  {
+    id: 'developer-agent',
+    name: 'Software Development Agent',
+    icon: Code2,
+    idea: 'Give it a small feature in a sample repo. Ask for tested code and a review checklist in your team’s format.',
+  },
+  {
+    id: 'deck-reviewer',
+    name: 'Deck Reviewer',
+    icon: FileCheck,
+    idea: 'Review a sample deck against your own rubric for accuracy, accessibility, and gaps in the evidence.',
+  },
+  {
+    id: 'calendar-negotiator',
+    name: 'Calendar Negotiator',
+    icon: CalendarDays,
+    idea: 'Use a sample calendar to propose meeting times that respect your focus hours and time zones.',
+  },
+];
+
+function ExternalLink({href, className, children}) {
+  return <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+    {children}<ArrowUpRight size={16} aria-hidden="true"/>
+  </a>;
+}
+
+export default function OpenHackathon() {
+  const [starter, setStarter] = useState(recipes[0].id);
+  const [name, setName] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [test, setTest] = useState('');
+  const [result, setResult] = useState('');
+
+  function downloadBrief() {
+    const recipe = recipes.find(item => item.id === starter);
+    const file = new Blob([[
+      '# ' + name.trim(),
+      'Starter: ' + recipe.name + '\n' + catalog + '/' + recipe.id,
+      '## Customized agent prompt\n\n' + prompt.trim(),
+      '## Test case and expected result\n\n' + test.trim(),
+      '## Observed result and next improvement\n\n' + result.trim(),
+    ].join('\n\n') + '\n'], {type: 'text/markdown;charset=utf-8'});
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    const filename = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    link.href = url;
+    link.download = (filename || 'agent') + '-brief.md';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  return <main className="open-hackathon">
+    <header className="hack-hero">
+      <span className="eyebrow">OPEN HACKATHON</span>
+      <h1>Build an agent you can take home</h1>
+      <p>Pick an NVIDIA starter, give it a job of your own, and run it on your DGX Spark with the NemoClaw sandbox and local Qwen model from the workshop.</p>
+      <ExternalLink href={catalog} className="primary">Open NVIDIA agent playbooks</ExternalLink>
+    </header>
+
+    <section aria-labelledby="hack-recipes">
+      <h2 id="hack-recipes">Choose a starting point</h2>
+      <p>Open the recipe and read its policy, prompt, and personalization guide. Pick one to build and test. Add a second if time allows.</p>
+      <fieldset className="hack-recipes">
+        <legend className="sr-only">Starter for your agent brief</legend>
+        {recipes.map(({id, name: label, idea, icon: Icon}) => <article key={id}>
+          <label><input type="radio" name="hack-starter" value={id} checked={starter === id} onChange={() => setStarter(id)}/>
+            <Icon size={19} aria-hidden="true"/><strong>{label}</strong>
+          </label>
+          <p>{idea}</p>
+          <ExternalLink href={catalog + '/' + id} className="hack-guide">Read the {label} guide</ExternalLink>
+        </article>)}
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="hack-run">
+      <h2 id="hack-run">Make it yours and run it</h2>
+      <ol className="hack-run">
+        <li><strong>Customize.</strong> Name your agent and rewrite the starter prompt for your use case. Specify its inputs, output format, and when it should ask for approval.</li>
+        <li><strong>Scope access.</strong> Follow the recipe’s policy steps for only the files, tools, or sites it needs. Use sample data for the first run. Set up Telegram only if you plan to use the recipe’s messaging path.</li>
+        <li><strong>Deploy and test.</strong> On your Spark, confirm your sandbox and local inference with <code>nemoclaw list</code> and <code>nemoclaw YOUR_SANDBOX status</code>. Open the native dashboard with <code>nemoclaw YOUR_SANDBOX dashboard-url --quiet</code>, or use <strong>Agent Dashboard</strong> if your workshop provides that link. In OpenClaw, create or select your named agent, open a chat with it, and apply the customized prompt using the recipe’s instructions. Run a small test and inspect its actual output.</li>
+      </ol>
+      <ExternalLink href="https://docs.openclaw.ai/cli/agents" className="hack-guide">Create a named OpenClaw agent</ExternalLink>
+    </section>
+
+    <section className="hack-brief" aria-labelledby="hack-brief">
+      <h2 id="hack-brief">Take home your agent brief</h2>
+      <p>Save your instructions and a test you can run again. Keep a copy of your authored skills and policy notes alongside the brief. Keep credentials out of the files.</p>
+      <div className="hack-fields">
+        <label>Agent name<input value={name} maxLength={80} onChange={e => setName(e.target.value)} placeholder="e.g. Launch Deck Reviewer"/></label>
+        <label>Customized prompt<textarea rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Purpose, allowed inputs and tools, output format, approval rules"/></label>
+        <label>Test case and expected result<textarea rows={2} value={test} onChange={e => setTest(e.target.value)}/></label>
+        <label>Observed result and next improvement<textarea rows={2} value={result} onChange={e => setResult(e.target.value)}/></label>
+      </div>
+      <button type="button" className="secondary" disabled={!name.trim() || !prompt.trim()} onClick={downloadBrief}><Download size={16} aria-hidden="true"/> Download agent brief</button>
+    </section>
+  </main>;
 }

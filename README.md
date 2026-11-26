@@ -49,7 +49,7 @@ Each challenge uses a dedicated new agent. Easy and Technical modes teach the sa
 - **Contain the Grinch:** inspect network activity, apply an OpenShell policy and verify that sabotage probes are blocked.
 - **Gift scanner:** test the local vision model, scan five objects, confirm labels and recipients, and package them for the sleigh. Camera snapshots use only the selected square. Browser face effects run locally.
 
-After all three challenges, start delivery to celebrate. Santa and the agents remain available for further work. **Open Hackathon** is available immediately and opens Santa’s Bauble Factory with MCP, custom skills, local agents and Telegram human approval. [Sprint setup](docs/open-hackathon.md).
+After all three challenges, start delivery to celebrate. Santa and the agents remain available for further work. **Open Hackathon** is available immediately. Pick an NVIDIA NemoClaw starter, customize the prompt, and deploy and test your own agent using your existing locally served model. [Open Hackathon guide](docs/open-hackathon.md).
 
 ## Export and reset
 
@@ -77,7 +77,3 @@ node deploy/check-repository-hygiene.mjs
 `npm run dev` serves the frontend; `npm start` requires a qualified GB10/native runtime. A frontend build alone does not verify native execution. Fresh-device installation and model capacity must be validated on the target hardware.
 
 Keep local databases, credentials, conversations, generated outputs, screenshots, development notes and audit evidence outside Git. Runtime agent instructions, synthetic exercise data, tests and dependency provenance are maintained source files. This application assumes one trusted private installation; use separate installations for separate trust groups.
-
-## Santa’s Bauble Factory
-
-The final Open Hackathon turns a customer brief into a reviewed ornament print package through Designer, CAD Builder and Print Inspector Claws. Install the offline CAD worker with `./santa-claw up --factory` on Linux; keep your existing runtime/provider/model arguments. See [deployment and event instructions](docs/open-hackathon.md) and [organizer printer qualification](docs/factory/printer-profile.md). A qualified event printer profile is required for print submission; development exports remain available.

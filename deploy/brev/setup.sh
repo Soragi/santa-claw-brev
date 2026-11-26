@@ -16,7 +16,7 @@ for vendor in /sys/bus/pci/devices/*/vendor; do
   fi
 done
 if [[ ${1:-} == --plan ]]; then
-  printf 'Santa Claw · %s · NVIDIA Build · %s · CPU · port 4310 · factory enabled\n' "$agent" "$model"
+  printf 'Santa Claw · %s · NVIDIA Build · %s · CPU · port 4310\n' "$agent" "$model"
   exit 0
 fi
 [[ -n ${NVIDIA_INFERENCE_API_KEY:-} ]] || { echo 'Select your NVIDIA Build key in Brev Setup values.' >&2; exit 2; }
@@ -66,7 +66,7 @@ if [[ -f $keyfile ]]; then
   rm -f -- "$keyfile"
 fi
 cd "$HOME/santa-claw-launchable"
-args=(up --agent "${options[0]}" --provider build --model "${options[1]}" --port 4310 --factory --yes)
+args=(up --agent "${options[0]}" --provider build --model "${options[1]}" --port 4310 --yes)
 diagnostic="$HOME/.config/santa-claw-launchable/install.stderr"
 if ! ./santa-claw "${args[@]}" >/dev/null 2>"$diagnostic"; then
   if grep -Fq 'Named sandbox was not provisioned.' "$diagnostic"; then

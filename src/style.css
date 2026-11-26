@@ -79,8 +79,8 @@
 @media(max-width:760px){.world-label.grinch-status-label{max-width:min(320px,calc(100% - 88px))}}
 
 /* Status overlays can be hidden without affecting running agents or challenges. */
-.factory-village .village-notice-close,.village-mail-progress .village-notice-close{position:absolute;top:6px;right:6px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:5px;border:0;border-radius:7px;background:#ffffff20;color:inherit;cursor:pointer;z-index:1}
-.factory-village .village-notice-close:hover,.village-mail-progress .village-notice-close:hover{background:#ffffff45}
-.factory-village{padding-top:36px}.village-mail-progress{padding-right:37px}
+.village-mail-progress .village-notice-close{position:absolute;top:6px;right:6px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:5px;border:0;border-radius:7px;background:#ffffff20;color:inherit;cursor:pointer;z-index:1}
+.village-mail-progress .village-notice-close:hover{background:#ffffff45}
+.village-mail-progress{padding-right:37px}
 .village-notifications-toggle{display:inline-flex;align-items:center;gap:6px;font-size:11px}
 .village-notifications-hidden .start-here,.village-notifications-hidden .toast,.village-notifications-hidden .finale-access,.village-notifications-hidden .finale-caption{display:none}
