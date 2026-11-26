@@ -1,24 +1,10 @@
-# DGX Spark GB10 installation and operations
+# GB10 operations and existing installations
 
-The supported production target is Linux ARM64 on GB10 with local inference. This guide assumes a trusted private workshop on one Spark; it does not turn the shared sandbox into multi-tenant hosting.
+If the device is new, follow the [clean GB10 deployment README](../deploy/gb10/README.md). This page covers existing local models, sandbox compatibility, service maintenance and advanced recovery.
 
-## Host and native prerequisites
+## Native compatibility
 
-- DGX Spark / GB10, compute capability 12.1; the baseline profile is a 128 GB-class device. Unified memory is shared with the OS, containers, application and model/KV cache. GPU `memory.total` can be unavailable; use host memory information and real load tests.
-- Node.js 22.19+ and working Docker access. App preparation uses `npm ci --ignore-scripts` and builds ARM64 dependencies on the device.
-- NemoClaw 0.0.137+ with JSON inventory, sandbox `exec` and native `inference set`; OpenShell 0.0.116+. These are the minimum reference toolchain versions used by this app, not a demand to upgrade a shared system without planning.
-- A healthy local vLLM model with structured tool calling. Use the pinned [GB10 model guide](vllm-setup.md), or a native managed serving profile qualified for your device.
-
-Start with `npm run check:gb10`. Before a sandbox exists, inspect the host/server stages directly:
-
-```bash
-node deploy/check-gb10.mjs --stage host
-node deploy/check-gb10.mjs --stage server --smoke
-```
-
-The checker is read-only. Failed native prerequisites remain failed even when hardware/model checks succeed. The model smoke probe requests a function call; it does not execute a command or create an agent.
-
-Use the maintained installer rather than assuming the reference CLI is published as an npm package. For fresh native installation, follow the [official NVIDIA Spark playbook](https://build.nvidia.com/spark/nemoclaw/instructions). Keep the native gateway under NemoClaw’s lifecycle. Do not manually replace system binaries, register a new global gateway over another workshop, or stop another project’s model just to make a check green.
+Use a supported Linux ARM64 GB10, Node.js 22.19+ and Docker. Santa Claw’s reference toolchain uses NemoClaw 0.0.137+ with JSON inventory, sandbox execution and native inference switching, and OpenShell 0.0.116+. Validate your exact version and local route before adopting an existing installation.
 
 For a gateway upgraded from an older installation, inspect its native provider-composition setting before onboarding:
 
@@ -57,7 +43,7 @@ export SANTA_SANDBOX=your-existing-local-sandbox
 npm run verify:gb10
 ```
 
-That model ID is an example of an existing server that uses the repository name; a new reference launch serves `santa-qwen` instead. Discovery must match the selected sandbox’s recorded model. The app reads the named sandbox’s provider/model; cloud-backed or unknown routes are rejected in local-only mode.
+That model ID is an example of an existing server that uses the repository name; a new reference launch serves `santa-qwen` instead. Discovery must match the selected sandbox’s recorded model. The app reads the named sandbox’s provider/model; local-only mode requires a verified local route.
 
 For a fresh sandbox, use `npm run onboard:gb10` with a fresh `SANTA_SANDBOX`. It invokes local-vLLM onboarding and refuses an existing name. Native setup may download sandbox images. Model installation/download is a separate explicit step, not something ordinary app startup does.
 

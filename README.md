@@ -18,24 +18,11 @@ Organizers can configure setup, village and native dashboard Secure Links using 
 
 A local-first, Christmas-themed agent workshop. Design a printable 3D Claw, give it tools and skills, then deploy it in Santa’s village. Santa coordinates agents running locally in a NemoClaw-managed OpenShell sandbox. Choose local inference or a hosted provider when you deploy.
 
-## Install on a GB10
+## Install on a clean GB10
 
-Requires a supported 128 GB-class GB10, Linux ARM64 with working NVIDIA drivers, Python 3, Docker support and a systemd user session. Initial software, image and model downloads require internet access and can require sudo. Authenticate to GitHub first if the repository is private.
+Start with the [GB10 deployment guide](deploy/gb10/README.md). It takes you from first boot through **Qwen in local vLLM**, NemoClaw/OpenShell setup, Santa Claw Village, and a first agent test. It covers a managed Qwen setup for 64 GB and 128 GB devices, an operator-run model option, and checks for tool calling and image inference.
 
-```bash
-git clone https://github.com/Soragi/santa-claw.git
-cd santa-claw
-bash install.sh --plan
-bash install.sh
-```
-
-The installer provisions pinned native tools, managed local vLLM, browser dependencies and the application service. It refuses to replace an unowned existing workshop. No cloud inference key is needed. See [installation and recovery](docs/one-command-install.md) for prerequisites, reuse, resumable setup and qualification limits.
-
-Open **http://127.0.0.1:4310/santa/**. From a laptop, forward the app port:
-
-```bash
-ssh -N -L 4310:127.0.0.1:4310 your-user@your-spark
-```
+For a 128 GB-class device, the [pinned managed installer](docs/one-command-install.md) can provision the model and the workshop service together. The guide also covers the device-specific vLLM setup for smaller-memory configurations.
 
 ## Workshop
 
@@ -59,7 +46,7 @@ Export remains available during challenges. Multiple Claws download into separat
 
 ## Operations and development
 
-- [Existing GB10 setup and maintenance](docs/gb10-setup.md)
+- [GB10 service maintenance and recovery](docs/gb10-setup.md)
 - [Model profile](docs/gb10-models.md) and [manual vLLM setup](docs/vllm-setup.md)
 - [OpenShell approvals](docs/openshell-village.md)
 - [Health checks, updates and data](docs/operations-and-organizers.md)

@@ -1,23 +1,23 @@
-# Install the whole workshop on a new GB10
+# Managed Qwen and Santa Claw installation on a 128 GB GB10
 
-This installer targets a **128 GB-class GB10 running supported DGX OS/OEM Ubuntu**, with a working NVIDIA driver. It installs the application, pinned user tools, native NemoClaw/OpenShell, a managed local vLLM model, the isolated browser image and the background application service. It does not install GPU drivers, flash firmware or upgrade the OS.
+This installer targets a **128 GB-class GB10 running supported DGX OS/OEM Ubuntu**, with a working NVIDIA driver. It installs the application, pinned user tools, native NemoClaw/OpenShell, a managed local vLLM model, the isolated browser image and the background application service. Complete first boot and apply any supported driver or firmware updates before running it. See the [clean GB10 deployment README](../deploy/gb10/README.md) for the 64 GB managed option, the operator-run model option, and the common browser and agent tests.
 
-## Download and install
+## Download and install on the Spark
 
-Authenticate to GitHub normally first if this repository is private. Keep the checkout in a permanent directory; do not paste a GitHub token into the clone URL.
+Run these commands in a Spark terminal as your regular account. Authenticate to GitHub normally first if the repository is private. Keep the checkout in its permanent directory after installation.
 
 ```bash
-git clone https://github.com/Soragi/santa-claw.git
-cd santa-claw
+git clone https://github.com/Soragi/santa-claw-brev.git
+cd santa-claw-brev
+bash install.sh --plan
 bash install.sh
 ```
 
 No Node installation is needed before starting. Python 3, a regular login with a systemd user session, internet access and sudo access for missing system prerequisites are needed. The installer asks once before downloading/installing software; standard sudo password prompts can still appear. `--yes` accepts the software and model downloads for unattended setup. It does not accept a hardware mismatch or replace an existing workshop.
 
-Inspect first without writing anything:
+Inspect an existing installation without writing to it:
 
 ```bash
-bash install.sh --plan
 bash install.sh --check --sandbox santa-claw-gb10
 ```
 
@@ -59,7 +59,7 @@ Application data defaults to `~/.local/share/santa-claw/data`; installation rece
 
 The final checks require actual native command execution, a local structured model tool call, application readiness, and a synthetic image correctly recognized by the local VLM. Authenticated managed models use the verified local native inference route; keys are never copied into Santa configuration or exported agents.
 
-Open `http://127.0.0.1:4310/santa/` on the Spark. From a laptop:
+Open `http://127.0.0.1:4310/santa/` on the Spark. For a laptop browser, run this in a laptop terminal and keep the tunnel open:
 
 ```bash
 ssh -N -L 4310:127.0.0.1:4310 your-user@your-spark
