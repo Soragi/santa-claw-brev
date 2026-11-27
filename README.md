@@ -4,6 +4,20 @@ A local-first, Christmas-themed agent workshop. Design a printable 3D Claw, give
 
 ## Deploy on a clean GB10
 
+### Before you get started (optional preflight for a wiped 128 GB Spark)
+
+Once first-time system setup is complete, run these checks in the Spark terminal if you want to verify Docker and GPU access before installing:
+
+```bash
+docker ps
+docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
+```
+
+If Docker is missing, continue to the quick start. The installer can install Docker, set up Docker group access, and configure the NVIDIA runtime when needed. If you’re preparing the machine manually:
+
+- **Docker socket permission denied.** Run `sudo usermod -aG docker "$(id -un)"`, then sign out and back in. `newgrp docker` can activate membership in a new shell for an immediate check. Docker group membership grants root-level access. [Docker post-install steps](https://docs.docker.com/engine/install/linux-postinstall/)
+- **NVIDIA runtime missing.** If `nvidia-smi` works on the host and `nvidia-ctk` is installed, run `sudo nvidia-ctk runtime configure --runtime=docker`, then `sudo systemctl restart docker` when no workloads are running. Repeat the GPU container check. [NVIDIA Container Toolkit verification](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html)
+
 Follow the [GB10 quick start](deploy/gb10/README.md) to install local Qwen and open Santa Claw Village on a 64 GB or 128 GB Spark.
 
 ## Launch on NVIDIA Brev (CPU, hosted inference)
