@@ -10,8 +10,22 @@ await writeFile(path.join(dir,'workshop.env'),settings.join('\n')+'\n',{mode:0o6
 const tools=await Promise.all(['nemoclaw','openshell'].map(async tool=>path.dirname((await exec('which',[tool])).stdout.trim())));
 const servicePath=[...new Set([...tools,path.dirname(process.execPath),'/usr/local/bin','/usr/bin','/bin'])].join(':');
 const quoted=v=>JSON.stringify(v.replaceAll('%','%%'));
+const shellQuote=v=>"'"+v.replaceAll("'", "'\\''")+"'";
+const docker=(await exec('which',['docker'])).stdout.trim();
+const probe=args=>exec('systemd-run',['--user','--quiet','--wait','--pipe','--collect','--',...args],{timeout:25000});
+let dockerGroup=false;
+try{await probe([docker,'info','--format','{{.Architecture}}']);}catch{
+ // The login database can grant Docker while the user manager still holds its old groups.
+ // sg activates that existing membership; setpriv locks out privilege gains before the app starts.
+ const group=(await exec('id',['-nG',os.userInfo().username])).stdout.trim().split(/\s+/);
+ if(!group.includes('docker'))throw Error('The Village user service cannot access Docker and this user has no Docker group membership.');
+ await probe(['/usr/bin/sg','docker','-c','exec /usr/bin/setpriv --no-new-privs '+shellQuote(docker)+' info --format '+shellQuote('{{.Architecture}}')]).catch(()=>{throw Error('The Village user service could not activate its Docker group. Check Docker socket permissions and rerun the installer.');});
+ dockerGroup=true;
+}
+const launch=path.join(root,'deploy/start-workshop.sh');
+const start=dockerGroup?':/usr/bin/sg docker -c '+quoted('exec /usr/bin/setpriv --no-new-privs /usr/bin/bash '+shellQuote(launch)):quoted('/usr/bin/bash')+' '+quoted(launch);
 const directory=v=>{if(/[\r\n\0]/.test(v)||/\s$/.test(v))throw Error('Invalid checkout path');return v.replaceAll('%','%%');};
-const unit='[Unit]\nDescription=Santa Claw local GB10 workshop\nAfter=network-online.target\nStartLimitIntervalSec=0\n\n[Service]\nType=simple\nWorkingDirectory='+directory(root)+'\nEnvironment=NODE_ENV=production\nEnvironmentFile=%h/.config/santa-claw-gb10/workshop.env\nEnvironmentFile=-/etc/nemoclaw/gateway-management.env\nExecStart='+quoted('/usr/bin/bash')+' '+quoted(path.join(root,'deploy/start-workshop.sh'))+'\nEnvironment=PATH='+quoted(servicePath)+'\nRestart=on-failure\nRestartSec=10\nUMask=0077\nNoNewPrivileges=true\n\n[Install]\nWantedBy=default.target\n';
+const unit='[Unit]\nDescription=Santa Claw local GB10 workshop\nAfter=network-online.target\nStartLimitIntervalSec=0\n\n[Service]\nType=simple\nWorkingDirectory='+directory(root)+'\nEnvironment=NODE_ENV=production\nEnvironmentFile=%h/.config/santa-claw-gb10/workshop.env\nEnvironmentFile=-/etc/nemoclaw/gateway-management.env\nExecStart='+start+'\nEnvironment=PATH='+quoted(servicePath)+'\nRestart=on-failure\nRestartSec=10\nUMask=0077\nNoNewPrivileges='+(dockerGroup?'false':'true')+'\n\n[Install]\nWantedBy=default.target\n';
 await writeFile(path.join(units,'santa-claw-gb10.service'),unit,{mode:0o600});await exec('systemd-analyze',['--user','verify',path.join(units,'santa-claw-gb10.service')]);await exec('systemctl',['--user','daemon-reload']);await exec('systemctl',['--user','enable','--now','santa-claw-gb10.service']);await exec('systemctl',['--user','is-active','--quiet','santa-claw-gb10.service']);
 let healthy=false;for(let attempt=0;attempt<30;attempt++){try{const response=await fetch('http://127.0.0.1:'+(process.env.PORT||'4310')+'/santa/api/health',{redirect:'error',signal:AbortSignal.timeout(1000)}),status=await response.json();if(response.ok&&status.ok&&status.target==='dgx-spark-gb10'&&status.localOnly===true){healthy=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,500));}if(!healthy)throw Error('Service HTTP readiness failed. Inspect journalctl --user -u santa-claw-gb10; installation is not verified.');
 console.log('Installed santa-claw-gb10.service for the current Spark user. Model/runtime services were not changed.');
