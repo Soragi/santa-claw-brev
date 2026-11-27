@@ -98,6 +98,7 @@ systemctl --user show-environment >/dev/null 2>&1 || fail 'A working systemd use
 SANTA_UNIT="$HOME/.config/systemd/user/santa-claw-gb10.service"
 SANTA_RECEIPT="$SANTA_STATE_BASE/installation.json"
 SANTA_OWNED=0
+if [ "$SANTA_REUSE" != 1 ]; then export SANTA_GB10_BOOT_STATE="$SANTA_STATE_BASE"; fi
 if [ -f "$SANTA_RECEIPT" ]; then
  python3 "$SANTA_CHECKOUT/deploy/install-receipt.py" verify "$SANTA_RECEIPT" "$SANTA_CHECKOUT" "$SANTA_NAME" "$SANTA_REUSE"
  SANTA_OWNED=1
@@ -107,6 +108,11 @@ if [ -e "$SANTA_UNIT" ]; then
  if systemctl --user is-active --quiet santa-claw-gb10; then
   echo 'The owned workshop is already running. Verifying it without rebuilding or restarting.'
   export SANTA_SANDBOX="$SANTA_NAME"
+  export SANTA_DATA="$SANTA_DATA_BASE/data" SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
+  if [ "$SANTA_REUSE" != 1 ]; then
+   sudo loginctl enable-linger "$(id -un)"
+   node "$SANTA_CHECKOUT/deploy/install-user-service.mjs"
+  fi
   node "$SANTA_CHECKOUT/deploy/check-gb10.mjs" --stage runtime --smoke
   node "$SANTA_CHECKOUT/deploy/installer-verify.mjs"
   print_access_links
@@ -253,8 +259,8 @@ npm run build
 # Verify actual sandbox execution separately from the model's tool-call format.
 nemoclaw "$SANTA_NAME" exec --no-tty --timeout 20 -- node -e 'console.log("SANTA_SANDBOX_OK")' | grep -q SANTA_SANDBOX_OK || fail 'Native sandbox execution failed.'
 record service
-npm run service:install
 sudo loginctl enable-linger "$(id -un)"
+npm run service:install
 # Readiness must succeed through an authenticated managed local route as well.
 node deploy/installer-verify.mjs
 record completed

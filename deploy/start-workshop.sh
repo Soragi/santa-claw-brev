@@ -20,6 +20,9 @@ export SANTA_DATA="${SANTA_DATA:-$SANTA_ROOT/data}"
 mkdir -p "$SANTA_DATA"
 chmod 700 "$SANTA_DATA"
 cd "$SANTA_ROOT"
+if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
+ bash "$SANTA_ROOT/deploy/gb10-sandbox-boot.sh" start
+fi
 node "$SANTA_ROOT/deploy/check-gb10.mjs" --stage runtime
 if [ ! -d node_modules ]; then npm ci --ignore-scripts; fi
 if [ ! -f dist/index.html ]; then npm run build; fi
