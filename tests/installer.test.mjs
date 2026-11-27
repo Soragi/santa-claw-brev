@@ -13,3 +13,12 @@ test('default installer vision qualification uses the selected native model, not
 test('installer verification rejects a healthy but different application release',async()=>{const fetcher=async()=>({ok:true,json:async()=>({ok:true,version:'old',checks:[{name:'localModel',ok:true},{name:'openshell',ok:true}]})});await assert.rejects(()=>verifyInstallation({fetcher,expectedVersion:'new',attempts:1}),/does not match/);});
 
 test('installer receipts prevent a reused native runtime being treated as an owned one on resume',()=>{const temp=mkdtempSync(path.join(os.tmpdir(),'install-receipt-')),receipt=path.join(temp,'installation.json'),helper=new URL('../deploy/install-receipt.py',import.meta.url);try{const run=(action,reuse,sandbox='santa-test',phase='app')=>spawnSync('python3',[fileURLToPath(helper),action,receipt,fileURLToPath(new URL('../',import.meta.url)),sandbox,reuse,...(action==='write'?[phase]:[])],{encoding:'utf8'});assert.equal(run('write','1').status,0);assert.notEqual(run('verify','0').status,0);assert.equal(run('verify','1').status,0);assert.notEqual(run('verify','1','different').status,0);assert.equal(run('write','0').status,0);assert.equal(run('verify','0').status,0);}finally{rmSync(temp,{recursive:true,force:true});}});
+test('reboot management is explicit for an existing local sandbox',()=>{
+ const args=['install.sh','--plan','--manage-reboots','--sandbox','my-assistant'];
+ const plan=spawnSync('bash',[...args,'--reuse-existing'],{cwd:root,encoding:'utf8'});
+ assert.equal(plan.status,0,plan.stderr);
+ assert.match(plan.stdout,/Use the existing my-assistant sandbox/);
+ assert.match(plan.stdout,/Enable automatic OpenClaw recovery/);
+ assert.doesNotMatch(plan.stdout,/Provision my-assistant/);
+ assert.match(spawnSync('bash',args,{cwd:root,encoding:'utf8'}).stderr,/requires --reuse-existing/);
+});

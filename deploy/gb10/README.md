@@ -40,41 +40,30 @@ curl -fsSL https://www.nvidia.com/nemoclaw.sh -o "$HOME/nemoclaw-install.sh" &&
 
 Accept the software notice. If asked to choose an agent, select **OpenClaw**. Choose **1** for automatic vLLM setup, then **Yes** for Express Install. Wait for OpenClaw to report that it is ready. [NVIDIA setup reference](https://build.nvidia.com/spark/nemoclaw/instructions#step-1-install-nemoclaw)
 
-Now start Santa Claw using the default sandbox and the local Qwen model:
+Now install Santa Claw and enable automatic reboot recovery for that sandbox:
 
 ```bash
-./santa-claw up --agent openclaw --reuse-native --sandbox my-assistant \
-  --provider vllm --model nvidia/Qwen3.6-35B-A3B-NVFP4 --vllm-port 8000
+bash install.sh --reuse-existing --manage-reboots --sandbox my-assistant
 ```
 
-If the NVIDIA installer displayed a different sandbox name or local Qwen model ID, use those values in the command. When prompted to install Santa Claw, type **y** and wait for **Workshop ready**.
+If the NVIDIA installer displayed a different sandbox name, use it in the command. Type **y** and wait for **Santa Claw is ready**. If you previously started this same workshop with `./santa-claw up`, run `./santa-claw stop` first. This stops its web app and preserves its data.
 
 ## 3. Open the Village and OpenClaw Dashboard
 
-On the 128 GB path, look at the end of the installer output in the Spark terminal. It prints the **Santa Claw Village** link, the **OpenClaw Dashboard** link with its access token, and one SSH command that forwards both ports to your laptop. Keep the dashboard link private. To print both links again, rerun `bash install.sh`.
-
-On the 64 GB path, open the [Village](http://127.0.0.1:4310/santa/) and use `nemoclaw my-assistant dashboard-url --quiet` to get the private dashboard link. Use your sandbox name if it differs from `my-assistant`.
+Look at the end of the installer output in the Spark terminal. It prints the **Santa Claw Village** link, the **OpenClaw Dashboard** link with its access token, and one SSH command that forwards both ports to your laptop. Keep the dashboard link private. To print both links again, rerun your install command from step 2.
 
 On the Spark, open [Santa Claw Village](http://127.0.0.1:4310/santa/). Create a Claw, give it a purpose, and run its readiness checks and a real test in **Workshop**. For a first task, ask it to compute **23 × 17** and save the answer in a file. Check that the file contains **391**, then deploy the Claw to your village.
 
 <details>
 <summary>I'm using a browser on my laptop</summary>
 
-On the 128 GB path, run the printed SSH command in a **laptop terminal**. Replace `your-user@YOUR_SPARK` with your usual Spark SSH destination, or replace it with your SSH alias. Leave the tunnel open and open both printed links in your laptop browser.
-
-On the 64 GB path, use this command to forward the Village:
-
-```bash
-ssh -N -L 4310:127.0.0.1:4310 your-user@your-spark
-```
-
-Leave that terminal open and go to [Santa Claw Village](http://127.0.0.1:4310/santa/) in the laptop browser. For the dashboard, also forward the port in the private dashboard link to the same port on your laptop.
+Run the printed SSH command in a **laptop terminal**. Replace the final `username@YOUR_SPARK` with your usual Spark SSH destination or SSH alias. Leave the tunnel open and open both printed links in your laptop browser.
 
 </details>
 
 ## After a reboot
 
-On the 128 GB path, OpenClaw and the Village start automatically after a normal Spark reboot. Give Qwen a couple of minutes to load, then reopen the links. If you use a laptop, reconnect the SSH tunnel. On the 64 GB path, wait for NemoClaw and vLLM, then rerun the Santa Claw launch command from step 2.
+On either path, OpenClaw and the Village start automatically after a normal Spark reboot. Give Qwen a couple of minutes to load, then reopen the links. If you use a laptop, reconnect the SSH tunnel.
 
 <details>
 <summary>Setup stopped or the village won't open</summary>

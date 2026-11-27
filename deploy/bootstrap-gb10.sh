@@ -5,13 +5,14 @@ SANTA_CHECKOUT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 SANTA_MODE=install
 SANTA_ACCEPT=0
 SANTA_REUSE=0
+SANTA_MANAGE_REBOOTS=0
 SANTA_NAME=santa-claw-gb10
 SANTA_ORIGINAL_ARGS=("$@")
 fail(){ echo "Santa Claw: $*" >&2; exit 1; }
 while [ "$#" -gt 0 ]; do
  case "$1" in
  --help|-h) cat <<'HELP'
-Usage: bash install.sh [--check | --plan] [--yes] [--sandbox NAME] [--reuse-existing]
+Usage: bash install.sh [--check | --plan] [--yes] [--sandbox NAME] [--reuse-existing [--manage-reboots]]
 
 Default: inspect a supported GB10, confirm once, install pinned user tools and
 native local inference, build Santa Claw and install its background service.
@@ -20,6 +21,7 @@ native local inference, build Santa Claw and install its background service.
 --yes               Accept software/image/model downloads without the initial prompt.
 --sandbox NAME      Dedicated sandbox name (default santa-claw-gb10; max 19 chars).
 --reuse-existing    Verify and use that exact existing local sandbox. Never upgrade it.
+--manage-reboots    Let Santa Claw stop/start this reused sandbox during normal reboots.
 
 A supported DGX OS/OEM driver and Python 3 must already work. Missing Ubuntu
 utilities/Docker/toolkit can require sudo. No driver, firmware or OS upgrade is run.
@@ -31,12 +33,14 @@ HELP
  --plan) SANTA_MODE=plan;;
  --yes) SANTA_ACCEPT=1;;
  --reuse-existing) SANTA_REUSE=1;;
+ --manage-reboots) SANTA_MANAGE_REBOOTS=1;;
  --sandbox) [ "$#" -gt 1 ] || fail 'Missing sandbox name'; SANTA_NAME="$2"; shift;;
  *) fail "Unknown option $1; use --help";;
  esac
  shift
 done
 [[ "$SANTA_NAME" =~ ^[a-z][a-z0-9-]{1,18}$ ]] || fail 'Use a sandbox name of 2–19 lowercase letters, digits or hyphens.'
+[ "$SANTA_MANAGE_REBOOTS" != 1 ] || [ "$SANTA_REUSE" = 1 ] || fail '--manage-reboots requires --reuse-existing.'
 command -v python3 >/dev/null || fail 'Python 3 is missing. Install the supported DGX OS/OEM prerequisites first.'
 pin(){ python3 -c 'import json,sys;v=json.load(open(sys.argv[1]));
 for k in sys.argv[2].split("."):v=v[k]
@@ -66,8 +70,13 @@ if [ "$SANTA_MODE" = plan ]; then
  echo "Santa Claw installation plan: $SANTA_CHECKOUT"
  echo "1. Check Linux ARM64 GB10, driver, memory, disk, Docker and existing services."
  echo "2. Prepare missing Ubuntu utilities; install verified Node $SANTA_NODE_VERSION in the user's toolchain directory."
- echo "3. Install NemoClaw $(pin native.version) from commit $SANTA_NATIVE_REF and its pinned OpenShell."
- echo "4. Provision $SANTA_NAME using local managed $(pin managedModel.slug), immutable image and model revision."
+ if [ "$SANTA_REUSE" = 1 ]; then
+  echo "3. Use the existing $SANTA_NAME sandbox and its configured local model."
+  if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then echo '4. Enable automatic OpenClaw recovery after a normal reboot.'; fi
+ else
+  echo "3. Install NemoClaw $(pin native.version) from commit $SANTA_NATIVE_REF and its pinned OpenShell."
+  echo "4. Provision $SANTA_NAME using local managed $(pin managedModel.slug), immutable image and model revision."
+ fi
  echo "5. npm ci; prepare isolated browser image; build; verify local inference and native execution."
  echo "6. Install santa-claw-gb10 user service with private data at $SANTA_DATA_BASE/data."
  echo "7. Verify HTTP readiness; print dashboard, SSH forwarding and secure credential setup."
@@ -77,11 +86,12 @@ fi
 [ "$(uname -s)" = Linux ] && [ "$(uname -m)" = aarch64 ] || fail 'This installer targets Linux ARM64 on GB10.'
 SANTA_GPU="$(nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader 2>/dev/null || true)"
 [[ "$SANTA_GPU" == *GB10* && "$SANTA_GPU" == *12.1* ]] || fail 'A working GB10 driver (compute capability 12.1) is required. No driver changes were made.'
-python3 - "$(pin minimumMemoryGiB)" "$(pin minimumDiskGiB)" "$SANTA_CHECKOUT" <<'PY'
+python3 - "$(pin minimumMemoryGiB)" "$(pin minimumDiskGiB)" "$SANTA_CHECKOUT" "$SANTA_REUSE" <<'PY'
 import sys,shutil
 m=int(next(l.split()[1] for l in open('/proc/meminfo') if l.startswith('MemTotal:')))*1024
-if m<int(sys.argv[1])*2**30:raise SystemExit('This pinned 128 GB-class profile needs at least '+sys.argv[1]+' GiB detected memory. Use a separately qualified smaller profile.')
-if shutil.disk_usage(sys.argv[3]).free<int(sys.argv[2])*2**30:raise SystemExit('At least '+sys.argv[2]+' GiB free space is required for this installation.')
+if sys.argv[4]!='1':
+    if m<int(sys.argv[1])*2**30:raise SystemExit('This pinned 128 GB-class profile needs at least '+sys.argv[1]+' GiB detected memory. Use a separately qualified smaller profile.')
+    if shutil.disk_usage(sys.argv[3]).free<int(sys.argv[2])*2**30:raise SystemExit('At least '+sys.argv[2]+' GiB free space is required for this installation.')
 PY
 if [ "$SANTA_MODE" = check ]; then
  echo "GB10 host detected: $SANTA_GPU"
@@ -98,7 +108,26 @@ systemctl --user show-environment >/dev/null 2>&1 || fail 'A working systemd use
 SANTA_UNIT="$HOME/.config/systemd/user/santa-claw-gb10.service"
 SANTA_RECEIPT="$SANTA_STATE_BASE/installation.json"
 SANTA_OWNED=0
-if [ "$SANTA_REUSE" != 1 ]; then export SANTA_GB10_BOOT_STATE="$SANTA_STATE_BASE"; fi
+if [ "$SANTA_REUSE" != 1 ] || [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then export SANTA_GB10_BOOT_STATE="$SANTA_STATE_BASE"; else unset SANTA_GB10_BOOT_STATE; fi
+export SANTA_DATA="$SANTA_DATA_BASE/data"
+if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
+ command -v nemoclaw >/dev/null || fail 'Install NemoClaw and complete local OpenClaw setup first.'
+ nemoclaw list --json | python3 -c 'import json,sys
+rows=json.load(sys.stdin)["sandboxes"]
+sys.exit(not any(r.get("name")==sys.argv[1] and r.get("agent")=="openclaw" and r.get("provider")=="vllm-local" and r.get("openshellDriver")=="docker" for r in rows))' "$SANTA_NAME" || fail 'Automatic reboot recovery requires the selected Docker-backed OpenClaw sandbox with local vLLM.'
+fi
+if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
+ SANTA_PORTABLE_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/santa-claw-portable"
+ if [ -f "$SANTA_PORTABLE_STATE/launcher.json" ]; then
+  python3 - "$SANTA_PORTABLE_STATE/launcher.json" "$SANTA_CHECKOUT" "$SANTA_NAME" <<'PY'
+import json,sys
+with open(sys.argv[1]) as source: receipt=json.load(source)
+if (receipt.get('root'),receipt.get('sandbox'),receipt.get('agent'),receipt.get('provider')) != (sys.argv[2],sys.argv[3],'openclaw','vllm'):
+    raise SystemExit('The portable workshop belongs to another checkout, sandbox or provider.')
+PY
+  export SANTA_DATA="$SANTA_PORTABLE_STATE/data"
+ fi
+fi
 if [ -f "$SANTA_RECEIPT" ]; then
  python3 "$SANTA_CHECKOUT/deploy/install-receipt.py" verify "$SANTA_RECEIPT" "$SANTA_CHECKOUT" "$SANTA_NAME" "$SANTA_REUSE"
  SANTA_OWNED=1
@@ -108,8 +137,8 @@ if [ -e "$SANTA_UNIT" ]; then
  if systemctl --user is-active --quiet santa-claw-gb10; then
   echo 'The owned workshop is already running. Verifying it without rebuilding or restarting.'
   export SANTA_SANDBOX="$SANTA_NAME"
-  export SANTA_DATA="$SANTA_DATA_BASE/data" SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
-  if [ "$SANTA_REUSE" != 1 ]; then
+  export SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
+  if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
    sudo loginctl enable-linger "$(id -un)"
    node "$SANTA_CHECKOUT/deploy/install-user-service.mjs"
   fi
@@ -182,7 +211,6 @@ if [ ! -x "$SANTA_NODE_ROOT/bin/node" ]; then
 fi
 [ "$(node --version)" = "v$SANTA_NODE_VERSION" ] || fail 'The installer-owned Node toolchain does not match the lock. Inspect it before retrying.'
 export SANTA_SANDBOX="$SANTA_NAME" SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
-export SANTA_DATA="$SANTA_DATA_BASE/data"
 mkdir -p "$SANTA_DATA"; chmod 700 "$SANTA_DATA"
 if [ "$SANTA_REUSE" != 1 ]; then
  if ss -H -ltn 'sport = :8000' | grep -q . && [ "$SANTA_OWNED" != 1 ]; then fail 'Port 8000 already serves another model. Use --reuse-existing for its qualified sandbox; no model was stopped.'; fi
