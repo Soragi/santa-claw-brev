@@ -48,6 +48,20 @@ SANTA_STATE_BASE="${XDG_STATE_HOME:-$HOME/.local/state}/santa-claw"
 SANTA_NODE_ROOT="$SANTA_DATA_BASE/toolchains/node-v$SANTA_NODE_VERSION-linux-arm64"
 export PATH="$SANTA_NODE_ROOT/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 SANTA_NATIVE_ARGS="$(pin serveArguments)"
+print_access_links(){
+ local dashboard_url dashboard_port
+ printf '\nSanta Claw Village: http://127.0.0.1:4310/santa/\n'
+ dashboard_url="$(nemoclaw "$SANTA_NAME" dashboard-url --quiet 2>/dev/null)" || dashboard_url=''
+ if [[ "$dashboard_url" =~ ^http://(127\.0\.0\.1|localhost):([0-9]{1,5})(/[^[:space:]]*)?$ ]]; then
+  dashboard_port="${BASH_REMATCH[2]}"
+  printf 'OpenClaw Dashboard: %s\n' "$dashboard_url"
+  printf '\nFrom a laptop, forward both ports:\n  ssh -N -L 4310:127.0.0.1:4310 -L %s:127.0.0.1:%s %s@YOUR_SPARK\n' "$dashboard_port" "$dashboard_port" "$(id -un)"
+  printf 'Then open the same two links on your laptop. Keep the dashboard link private.\n'
+ else
+  printf 'OpenClaw Dashboard: run nemoclaw %s dashboard-url --quiet to get your private link.\n' "$SANTA_NAME"
+  printf 'From a laptop, forward the Village port:\n  ssh -N -L 4310:127.0.0.1:4310 %s@YOUR_SPARK\n' "$(id -un)"
+ fi
+}
 if [ "$SANTA_MODE" = plan ]; then
  echo "Santa Claw installation plan: $SANTA_CHECKOUT"
  echo "1. Check Linux ARM64 GB10, driver, memory, disk, Docker and existing services."
@@ -95,6 +109,7 @@ if [ -e "$SANTA_UNIT" ]; then
   export SANTA_SANDBOX="$SANTA_NAME"
   node "$SANTA_CHECKOUT/deploy/check-gb10.mjs" --stage runtime --smoke
   node "$SANTA_CHECKOUT/deploy/installer-verify.mjs"
+  print_access_links
   exit 0
  fi
 fi
@@ -243,10 +258,9 @@ sudo loginctl enable-linger "$(id -un)"
 # Readiness must succeed through an authenticated managed local route as well.
 node deploy/installer-verify.mjs
 record completed
+echo 'Santa Claw is ready.'
+print_access_links
 cat <<DONE
-Santa Claw is ready: http://127.0.0.1:4310/santa/
-From a laptop: ssh -N -L 4310:127.0.0.1:4310 $(id -un)@YOUR_SPARK
-Open http://127.0.0.1:4310/santa/ on that laptop.
 Private workshop data: $SANTA_DATA
 Native credentials remain on this Spark. Configure Telegram through the secure UI.
 First installation needs internet; model weights and image caches are reused on reruns.
