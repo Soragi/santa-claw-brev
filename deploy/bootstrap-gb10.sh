@@ -9,6 +9,15 @@ SANTA_MANAGE_REBOOTS=0
 SANTA_NAME=santa-claw-gb10
 SANTA_ORIGINAL_ARGS=("$@")
 fail(){ echo "Santa Claw: $*" >&2; exit 1; }
+exact_local_model_is_serving(){
+ curl --noproxy '*' --fail --silent --max-time 5 http://127.0.0.1:8000/v1/models |
+  python3 -c 'import json,sys
+try:
+    models=json.load(sys.stdin)["data"]
+    sys.exit(not any(isinstance(m,dict) and m.get("id")==sys.argv[1] for m in models))
+except (KeyError,TypeError,ValueError):
+    sys.exit(1)' "$1"
+}
 while [ "$#" -gt 0 ]; do
  case "$1" in
  --help|-h) cat <<'HELP'
@@ -213,14 +222,24 @@ fi
 export SANTA_SANDBOX="$SANTA_NAME" SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
 mkdir -p "$SANTA_DATA"; chmod 700 "$SANTA_DATA"
 if [ "$SANTA_REUSE" != 1 ]; then
- if ss -H -ltn 'sport = :8000' | grep -q . && [ "$SANTA_OWNED" != 1 ]; then fail 'Port 8000 already serves another model. Use --reuse-existing for its qualified sandbox; no model was stopped.'; fi
- record native
  unset NEMOCLAW_FRESH NEMOCLAW_RECREATE_SANDBOX NEMOCLAW_FORCE_FRESH_INSTALL NEMOCLAW_FORCE_STATION_INSTALL NEMOCLAW_CONFIRM_LEGACY_MANAGED_RECREATE NEMOCLAW_ACCEPT_EXPERIMENTAL_OPENSHELL_UPGRADE NEMOCLAW_OPENSHELL_UPGRADE_PREPARED NEMOCLAW_SERVING_PRESET NEMOCLAW_MODEL
  export SANTA_LOCAL_MODEL="$(pin managedModel.repository)" NEMOCLAW_VLLM_PORT=8000
  export NEMOCLAW_AGENT=openclaw NEMOCLAW_NO_EXPRESS=1 NEMOCLAW_PROVIDER=install-vllm
  export NEMOCLAW_VLLM_MODEL="$(pin managedModel.slug)" NEMOCLAW_CONTEXT_WINDOW=32768
  export NEMOCLAW_VLLM_EXTRA_ARGS_JSON="$SANTA_NATIVE_ARGS" NEMOCLAW_SANDBOX_NAME="$SANTA_NAME"
  export NEMOCLAW_SINGLE_SESSION=1 NEMOCLAW_NON_INTERACTIVE=1 NEMOCLAW_NON_INTERACTIVE_SUDO_MODE=prompt NEMOCLAW_ACCEPT_THIRD_PARTY_SOFTWARE=1
+ if ! command -v nemoclaw >/dev/null; then
+  if exact_local_model_is_serving "$SANTA_LOCAL_MODEL"; then
+   echo "Found $SANTA_LOCAL_MODEL on port 8000. Reusing it without pulling a vLLM image or downloading weights."
+   export NEMOCLAW_PROVIDER=vllm NEMOCLAW_MODEL="$SANTA_LOCAL_MODEL"
+   unset NEMOCLAW_VLLM_MODEL NEMOCLAW_VLLM_EXTRA_ARGS_JSON
+  elif [ -n "$(ss -H -ltn 'sport = :8000')" ]; then
+   fail "Port 8000 is occupied and did not report $SANTA_LOCAL_MODEL. Free the port and rerun so the installer can start the pinned model."
+  else
+   echo 'No local model is serving on port 8000. Starting the pinned vLLM setup; cached image and weights will be reused.'
+  fi
+ fi
+ record native
  if ! command -v nemoclaw >/dev/null; then
   SANTA_NATIVE_SOURCE="$SANTA_DATA_BASE/native-$SANTA_NATIVE_REF"
   [ ! -L "$SANTA_NATIVE_SOURCE" ] && [ ! -L "$SANTA_NATIVE_SOURCE/.git" ] || fail 'Unexpected symlink in native source cache.'

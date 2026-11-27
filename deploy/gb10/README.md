@@ -29,6 +29,8 @@ bash install.sh
 
 The installer starts Qwen, sets up the sandbox, and starts Santa Claw. Wait for **Santa Claw is ready**.
 
+**Pre-stage Qwen to save time.** If vLLM already serves `nvidia/Qwen3.6-35B-A3B-NVFP4` on port `8000` under that exact model ID, the installer reuses it and verifies tool calling and vision. The server must be reachable from OpenShell. If port `8000` is free, the installer starts its pinned vLLM setup and reuses the exact weights from `$HOME/.cache/huggingface/hub` and the pinned image from Docker’s local cache. The model revision and image digest are in [the installer lock](../../config/installer.json). If another service is using port `8000`, free the port before retrying.
+
 ### 64 GB Spark
 
 First install NVIDIA NemoClaw. Paste this in the same terminal:
