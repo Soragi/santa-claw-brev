@@ -60,7 +60,7 @@ SANTA_DATA_BASE="${XDG_DATA_HOME:-$HOME/.local/share}/santa-claw"
 SANTA_STATE_BASE="${XDG_STATE_HOME:-$HOME/.local/state}/santa-claw"
 SANTA_NODE_ROOT="$SANTA_DATA_BASE/toolchains/node-v$SANTA_NODE_VERSION-linux-arm64"
 export PATH="$SANTA_NODE_ROOT/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
-SANTA_NATIVE_ARGS="$(pin serveArguments)"
+SANTA_CONTEXT="$(python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["serveArguments"]; print(a[a.index("--max-model-len")+1])' "$SANTA_CHECKOUT/config/installer.json")"
 print_access_links(){
  local dashboard_url dashboard_port
  printf '\nSanta Claw Village: http://127.0.0.1:4310/santa/\n'
@@ -224,23 +224,24 @@ mkdir -p "$SANTA_DATA"; chmod 700 "$SANTA_DATA"
 if [ "$SANTA_REUSE" != 1 ]; then
  unset NEMOCLAW_FRESH NEMOCLAW_RECREATE_SANDBOX NEMOCLAW_FORCE_FRESH_INSTALL NEMOCLAW_FORCE_STATION_INSTALL NEMOCLAW_CONFIRM_LEGACY_MANAGED_RECREATE NEMOCLAW_ACCEPT_EXPERIMENTAL_OPENSHELL_UPGRADE NEMOCLAW_OPENSHELL_UPGRADE_PREPARED NEMOCLAW_SERVING_PRESET NEMOCLAW_MODEL
  export SANTA_LOCAL_MODEL="$(pin managedModel.repository)" NEMOCLAW_VLLM_PORT=8000
- export NEMOCLAW_AGENT=openclaw NEMOCLAW_NO_EXPRESS=1 NEMOCLAW_PROVIDER=install-vllm
- export NEMOCLAW_VLLM_MODEL="$(pin managedModel.slug)" NEMOCLAW_CONTEXT_WINDOW=32768
- export NEMOCLAW_VLLM_EXTRA_ARGS_JSON="$SANTA_NATIVE_ARGS" NEMOCLAW_SANDBOX_NAME="$SANTA_NAME"
+ export NEMOCLAW_AGENT=openclaw NEMOCLAW_NO_EXPRESS=1 NEMOCLAW_PROVIDER=vllm
+ unset NEMOCLAW_VLLM_MODEL NEMOCLAW_VLLM_EXTRA_ARGS_JSON
+ export NEMOCLAW_SANDBOX_NAME="$SANTA_NAME"
  export NEMOCLAW_SINGLE_SESSION=1 NEMOCLAW_NON_INTERACTIVE=1 NEMOCLAW_NON_INTERACTIVE_SUDO_MODE=prompt NEMOCLAW_ACCEPT_THIRD_PARTY_SOFTWARE=1
+ record native
  if ! command -v nemoclaw >/dev/null; then
   if exact_local_model_is_serving "$SANTA_LOCAL_MODEL"; then
    echo "Found $SANTA_LOCAL_MODEL on port 8000. Reusing it without pulling a vLLM image or downloading weights."
-   export NEMOCLAW_PROVIDER=vllm NEMOCLAW_MODEL="$SANTA_LOCAL_MODEL"
-   unset NEMOCLAW_VLLM_MODEL NEMOCLAW_VLLM_EXTRA_ARGS_JSON
-  elif [ -n "$(ss -H -ltn 'sport = :8000')" ]; then
-   fail "Port 8000 is occupied and did not report $SANTA_LOCAL_MODEL. Free the port and rerun so the installer can start the pinned model."
+   # Advertise at most what a pre-existing server reports.
+   NEMOCLAW_CONTEXT_WINDOW="$(curl --noproxy '*' --fail --silent --max-time 5 http://127.0.0.1:8000/v1/models | python3 -c '
+import json,sys
+model=next(r for r in json.load(sys.stdin)["data"] if r.get("id")==sys.argv[1])
+print(min(int(sys.argv[2]),int(model.get("max_model_len") or 32768)))' "$SANTA_LOCAL_MODEL" "$SANTA_CONTEXT")"
   else
-   echo 'No local model is serving on port 8000. Starting the pinned vLLM setup; cached image and weights will be reused.'
+   bash "$SANTA_CHECKOUT/deploy/install-gb10-model.sh"
+   NEMOCLAW_CONTEXT_WINDOW="$SANTA_CONTEXT"
   fi
- fi
- record native
- if ! command -v nemoclaw >/dev/null; then
+  export NEMOCLAW_CONTEXT_WINDOW NEMOCLAW_MODEL="$SANTA_LOCAL_MODEL" NEMOCLAW_INFERENCE_INPUTS=text,image
   SANTA_NATIVE_SOURCE="$SANTA_DATA_BASE/native-$SANTA_NATIVE_REF"
   [ ! -L "$SANTA_NATIVE_SOURCE" ] && [ ! -L "$SANTA_NATIVE_SOURCE/.git" ] || fail 'Unexpected symlink in native source cache.'
   if [ -d "$SANTA_NATIVE_SOURCE/.git" ] &&
@@ -258,14 +259,6 @@ if [ "$SANTA_REUSE" != 1 ]; then
   fi
   [ "$(git -C "$SANTA_NATIVE_SOURCE" rev-parse HEAD)" = "$SANTA_NATIVE_REF" ] || fail 'Native source revision differs from the lock.'
   git -C "$SANTA_NATIVE_SOURCE" diff --quiet && git -C "$SANTA_NATIVE_SOURCE" diff --cached --quiet || fail 'Pinned native source has local changes.'
-  python3 - "$SANTA_CHECKOUT/config/installer.json" "$SANTA_NATIVE_SOURCE" <<'PYLOCK'
-import json,re,sys
-from pathlib import Path
-p=json.load(open(sys.argv[1]));base=Path(sys.argv[2])/'managed-inference'
-m=(base/'models/vllm.qwen3-6-35b-a3b-nvfp4.v1.yaml').read_text()
-r=(base/'recipes/vllm.qwen3-6-35b-a3b-nvfp4.spark-single.v1.yaml').read_text()
-if re.search(r'^  revision: (.+)$',m,re.M).group(1)!=p['managedModel']['revision'] or p['managedModel']['image'] not in r:raise SystemExit('Pinned native catalog differs from the declared installer model/image. No native installer was executed.')
-PYLOCK
   NEMOCLAW_INSTALL_REF="$SANTA_NATIVE_REF" bash "$SANTA_NATIVE_SOURCE/install.sh" --non-interactive --yes-i-accept-third-party-software 9>&-
  else
   # A commit-pinned source build can report the package version instead of the release tag.
@@ -283,16 +276,16 @@ try {
   # Native onboarding can finish before the app's first smoke check passes.
   if nemoclaw list --json | node -e '
 const fs = require("node:fs");
-const [name, model] = process.argv.slice(1);
+const name = process.argv[1];
 const inventory = JSON.parse(fs.readFileSync(0, "utf8"));
 const complete = inventory.incompleteOnboarding?.sandboxName !== name &&
   inventory.sandboxes?.some(row => row.name === name && row.agent === "openclaw" &&
-    row.model === model && row.provider === "vllm-local" && !row.recoveredFromGateway);
-process.exitCode = complete ? 0 : 1;' "$SANTA_NAME" "$SANTA_LOCAL_MODEL"; then
+    typeof row.model === "string" && row.model.length > 0 && row.provider === "vllm-local" && !row.recoveredFromGateway);
+process.exitCode = complete ? 0 : 1;' "$SANTA_NAME"; then
    echo 'Native onboarding is complete for this sandbox. Checking the running local route and continuing Santa Claw setup.'
   else
    # Resume only this installer's target. Never use --fresh or --recreate.
-   nemoclaw onboard --name "$SANTA_NAME" --agent openclaw --non-interactive --resume 9>&-
+   (unset NEMOCLAW_PROVIDER; nemoclaw onboard --name "$SANTA_NAME" --agent openclaw --non-interactive --resume 9>&-)
   fi
  fi
 fi

@@ -21,7 +21,7 @@ Inspect an existing installation without writing to it:
 bash install.sh --check --sandbox santa-claw-gb10
 ```
 
-`--plan` prints the steps. `--check` runs read-only host, native local-route and model tool-call checks; it fails when prerequisites are not installed yet. A first run can download tens of gigabytes. At least 100 GiB of free checkout storage is required; native provisioning also checks its own model-cache/image storage locations. No fixed installation-time promise is made.
+`--plan` prints the steps. `--check` runs read-only host, native local-route and model tool-call checks; it fails when prerequisites are not installed yet. A first run can download tens of gigabytes. At least 100 GiB of free checkout storage is required. No fixed installation-time promise is made.
 
 ## What is pinned
 
@@ -29,13 +29,13 @@ See `config/installer.json` for the exact identities:
 
 - Node 22.23.3 ARM64 archive, verified against its SHA-256.
 - NemoClaw 0.0.137 source commit `f00fb1dafe2113940b89bcd82f0561adf2696a7b` and its OpenShell dependency.
-- That source's managed Qwen NVFP4 model revision and immutable ARM64 vLLM image.
-- Context limited to 32K, one concurrent sequence and 0.4 memory utilization.
+- Qwen 3.8 NVFP4 model revision and immutable ARM64 vLLM image.
+- Context limited to 64K, one concurrent sequence and 0.4 memory utilization.
 - Application dependencies through the committed npm lockfile and the pinned browser image.
 
-The managed model snapshot is `491c2f1ea524c639598bf8fa787a93fed5a6fbce`, as declared by the pinned NemoClaw catalog. This differs from the older operator-run Python recipe in `docs/vllm-setup.md`; they are separate, explicit deployment paths. Docker and platform utilities come from the supported OS repositories; their package versions remain under platform maintenance rather than this application's lock.
+The default model is `nvidia/Qwen3.8-27B-NVFP4`, pinned at revision `482ca0f3832238542f8f5295dde86b5f22711d80` with a 65,536-token context limit. This differs from the older operator-run Python recipe in `docs/vllm-setup.md`; they are separate, explicit deployment paths. Docker and platform utilities come from the supported OS repositories; their package versions remain under platform maintenance rather than this application's lock.
 
-NemoClaw controls its model container and native gateway lifecycle. Santa remains a user service on the host, where its native terminal, Docker integration and private MCP bridge work without nested Docker or mounting the host Docker socket into an application container.
+Santa Claw provisions the pinned vLLM container. NemoClaw attaches OpenClaw to that local server and controls the native gateway lifecycle. Santa remains a user service on the host, where its native terminal, Docker integration and private MCP bridge work without nested Docker or mounting the host Docker socket into an application container.
 
 ## Existing installations and resuming
 

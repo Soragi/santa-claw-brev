@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import os from 'node:os';import {readFile} from 'node:fs/promises';import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {fileURLToPath} from 'node:url';import path from 'node:path';
 const exec=promisify(execFile),root=path.dirname(path.dirname(fileURLToPath(import.meta.url))),profile=JSON.parse(await readFile(path.join(root,'config/gb10.json'),'utf8'));
+const installLock=JSON.parse(await readFile(path.join(root,'config/installer.json'),'utf8'));
+const installerModel={...installLock.managedModel,servedName:installLock.managedModel.repository,maxModelLength:Number(installLock.serveArguments[installLock.serveArguments.indexOf('--max-model-len')+1])};
 export function versionAtLeast(actual,minimum){const a=String(actual).match(/\d+\.\d+\.\d+/)?.[0].split('.').map(Number),b=minimum.split('.').map(Number);if(!a)return false;for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]>b[i];}return true;}
 export function hostChecks(snapshot){return [
  {name:'Linux ARM64',passed:snapshot.platform==='linux'&&snapshot.arch==='arm64',detail:snapshot.platform+' / '+snapshot.arch},
  {name:'NVIDIA GB10',passed:/\bGB10\b/.test(snapshot.gpu)&&/12\.1/.test(snapshot.gpu),detail:snapshot.gpu||'No GB10 found'},
  {name:'Node.js 22.19+',passed:versionAtLeast(snapshot.node,'22.19.0'),detail:snapshot.node},
  {name:'Docker access',passed:snapshot.docker===true,detail:snapshot.docker?'Available':'Install/configure Docker using the NVIDIA Spark prerequisites'}];}
-export function profileDrift(model,reference=profile.model){if(!model)return [];const out=[];if(![reference.servedName,reference.repository].includes(model.id))out.push('Served model '+model.id+' differs from the reference profile ('+reference.servedName+'). Validate tool calling and output budgets for it.');const length=model.max_model_len;if(length&&length!==reference.maxModelLength)out.push('Served context '+length+' differs from the reference '+reference.maxModelLength+'. Larger contexts reduce KV-cache headroom; re-check memory and the documented budgets.');return out;}
+export function profileDrift(model,reference=model?.id===installerModel.repository?installerModel:profile.model){if(!model)return [];const out=[];if(![reference.servedName,reference.repository].includes(model.id))out.push('Served model '+model.id+' differs from the reference profile ('+reference.servedName+'). Validate tool calling and output budgets for it.');const length=model.max_model_len;if(length&&length!==reference.maxModelLength)out.push('Served context '+length+' differs from the reference '+reference.maxModelLength+'. Larger contexts reduce KV-cache headroom; re-check memory and the documented budgets.');return out;}
 async function capture(command,args,timeout=15000){try{return (await exec(command,args,{timeout,maxBuffer:1000000})).stdout.trim();}catch{return null;}}
 async function request(url,body){const response=await fetch(url,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(body?60000:5000)});if(!response.ok)throw Error('HTTP '+response.status);const chunks=[];let n=0;for await(const part of response.body){n+=part.length;if(n>1000000)throw Error('Response too large');chunks.push(part);}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
 export async function checkWorkshopToolCall(nativeCall){
@@ -32,7 +34,7 @@ export async function checkGb10({stage='runtime',smoke=false}={}){
  // Use the workshop's native transport so the sandbox-scoped provider and its
  // supervisor-issued reference are resolved exactly as in a real challenge.
  const nativeCall=nativeProbe?(await import('../server/private-runtime.mjs')).call:null;
- const expected=(stage==='runtime'?route?.model:null)||process.env.SANTA_LOCAL_MODEL;const choose=catalog=>{const candidates=Array.isArray(catalog?.data)?catalog.data:[];return expected?candidates.find(m=>m.id===expected):candidates.find(m=>m.id===profile.model.servedName||m.id===profile.model.repository||m.root===profile.model.repository);};
+ const expected=(stage==='runtime'?route?.model:null)||process.env.SANTA_LOCAL_MODEL;const choose=catalog=>{const candidates=Array.isArray(catalog?.data)?catalog.data:[];return expected?candidates.find(m=>m.id===expected):candidates.find(m=>m.id===installerModel.repository||m.id===profile.model.servedName||m.id===profile.model.repository||m.root===profile.model.repository);};
  try{model=choose(await request('http://127.0.0.1:'+port+'/v1/models'));}catch{}
  if(!model&&nativeCall)try{const {models}=await nativeCall({op:'model-catalog'},25);model=choose({data:models.map(id=>({id}))});}catch{}
  warnings.push(...profileDrift(model));checks.push({name:'Local '+backend+' model',passed:!!model,detail:model?.id||'No matching local catalog. Configure the host model or repair its native authenticated local route.'});
