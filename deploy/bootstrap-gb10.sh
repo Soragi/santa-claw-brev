@@ -21,12 +21,13 @@ except (KeyError,TypeError,ValueError):
 while [ "$#" -gt 0 ]; do
  case "$1" in
  --help|-h) cat <<'HELP'
-Usage: bash install.sh [--check | --plan] [--yes] [--sandbox NAME] [--reuse-existing [--manage-reboots]]
+Usage: bash install.sh [--check | --plan | --prefetch-model] [--yes] [--sandbox NAME] [--reuse-existing [--manage-reboots]]
 
 Default: inspect a supported GB10, confirm once, install pinned user tools and
 native local inference, build Santa Claw and install its background service.
 --check             Read-only hardware/dependency report; never installs anything.
 --plan              Print the pinned installation steps without modifying the host.
+--prefetch-model    Download the pinned 128 GB model and vLLM image without starting Santa Claw.
 --yes               Accept software/image/model downloads without the initial prompt.
 --sandbox NAME      Dedicated sandbox name (default santa-claw-gb10; max 19 chars).
 --reuse-existing    Verify and use that exact existing local sandbox. Never upgrade it.
@@ -40,6 +41,7 @@ HELP
  exit 0;;
  --check) SANTA_MODE=check;;
  --plan) SANTA_MODE=plan;;
+ --prefetch-model) SANTA_MODE=prefetch;;
  --yes) SANTA_ACCEPT=1;;
  --reuse-existing) SANTA_REUSE=1;;
  --manage-reboots) SANTA_MANAGE_REBOOTS=1;;
@@ -50,6 +52,7 @@ HELP
 done
 [[ "$SANTA_NAME" =~ ^[a-z][a-z0-9-]{1,18}$ ]] || fail 'Use a sandbox name of 2–19 lowercase letters, digits or hyphens.'
 [ "$SANTA_MANAGE_REBOOTS" != 1 ] || [ "$SANTA_REUSE" = 1 ] || fail '--manage-reboots requires --reuse-existing.'
+[ "$SANTA_MODE" != prefetch ] || [ "$SANTA_REUSE" = 0 ] || fail '--prefetch-model uses the pinned 128 GB profile; omit --reuse-existing.'
 command -v python3 >/dev/null || fail 'Python 3 is missing. Install the supported DGX OS/OEM prerequisites first.'
 pin(){ python3 -c 'import json,sys;v=json.load(open(sys.argv[1]));
 for k in sys.argv[2].split("."):v=v[k]
@@ -119,53 +122,59 @@ SANTA_RECEIPT="$SANTA_STATE_BASE/installation.json"
 SANTA_OWNED=0
 if [ "$SANTA_REUSE" != 1 ] || [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then export SANTA_GB10_BOOT_STATE="$SANTA_STATE_BASE"; else unset SANTA_GB10_BOOT_STATE; fi
 export SANTA_DATA="$SANTA_DATA_BASE/data"
-if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
- command -v nemoclaw >/dev/null || fail 'Install NemoClaw and complete local OpenClaw setup first.'
- nemoclaw list --json | python3 -c 'import json,sys
+if [ "$SANTA_MODE" = install ]; then
+ if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
+  command -v nemoclaw >/dev/null || fail 'Install NemoClaw and complete local OpenClaw setup first.'
+  nemoclaw list --json | python3 -c 'import json,sys
 rows=json.load(sys.stdin)["sandboxes"]
 sys.exit(not any(r.get("name")==sys.argv[1] and r.get("agent")=="openclaw" and r.get("provider")=="vllm-local" and r.get("openshellDriver")=="docker" for r in rows))' "$SANTA_NAME" || fail 'Automatic reboot recovery requires the selected Docker-backed OpenClaw sandbox with local vLLM.'
-fi
-if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
- SANTA_PORTABLE_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/santa-claw-portable"
- if [ -f "$SANTA_PORTABLE_STATE/launcher.json" ]; then
-  python3 - "$SANTA_PORTABLE_STATE/launcher.json" "$SANTA_CHECKOUT" "$SANTA_NAME" <<'PY'
+ fi
+ if [ "$SANTA_MANAGE_REBOOTS" = 1 ]; then
+  SANTA_PORTABLE_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/santa-claw-portable"
+  if [ -f "$SANTA_PORTABLE_STATE/launcher.json" ]; then
+   python3 - "$SANTA_PORTABLE_STATE/launcher.json" "$SANTA_CHECKOUT" "$SANTA_NAME" <<'PY'
 import json,sys
 with open(sys.argv[1]) as source: receipt=json.load(source)
 if (receipt.get('root'),receipt.get('sandbox'),receipt.get('agent'),receipt.get('provider')) != (sys.argv[2],sys.argv[3],'openclaw','vllm'):
     raise SystemExit('The portable workshop belongs to another checkout, sandbox or provider.')
 PY
-  export SANTA_DATA="$SANTA_PORTABLE_STATE/data"
- fi
-fi
-if [ -f "$SANTA_RECEIPT" ]; then
- python3 "$SANTA_CHECKOUT/deploy/install-receipt.py" verify "$SANTA_RECEIPT" "$SANTA_CHECKOUT" "$SANTA_NAME" "$SANTA_REUSE"
- SANTA_OWNED=1
-fi
-if [ -e "$SANTA_UNIT" ]; then
- [ "$SANTA_OWNED" = 1 ] || fail 'An existing Santa service is not owned by this installer. Use --check; its files were not changed.'
- if systemctl --user is-active --quiet santa-claw-gb10; then
-  echo 'The owned workshop is already running. Verifying it without rebuilding or restarting.'
-  export SANTA_SANDBOX="$SANTA_NAME"
-  export SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
-  if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
-   sudo loginctl enable-linger "$(id -un)"
-   node "$SANTA_CHECKOUT/deploy/install-user-service.mjs"
+   export SANTA_DATA="$SANTA_PORTABLE_STATE/data"
   fi
-  node "$SANTA_CHECKOUT/deploy/check-gb10.mjs" --stage runtime --smoke
-  node "$SANTA_CHECKOUT/deploy/installer-verify.mjs"
-  print_access_links
-  exit 0
  fi
+ if [ -f "$SANTA_RECEIPT" ]; then
+  python3 "$SANTA_CHECKOUT/deploy/install-receipt.py" verify "$SANTA_RECEIPT" "$SANTA_CHECKOUT" "$SANTA_NAME" "$SANTA_REUSE"
+  SANTA_OWNED=1
+ fi
+ if [ -e "$SANTA_UNIT" ]; then
+  [ "$SANTA_OWNED" = 1 ] || fail 'An existing Santa service is not owned by this installer. Use --check; its files were not changed.'
+  if systemctl --user is-active --quiet santa-claw-gb10; then
+   echo 'The owned workshop is already running. Verifying it without rebuilding or restarting.'
+   export SANTA_SANDBOX="$SANTA_NAME"
+   export SANTA_ALLOW_CLOUD_INFERENCE=0 PORT=4310
+   if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
+    sudo loginctl enable-linger "$(id -un)"
+    node "$SANTA_CHECKOUT/deploy/install-user-service.mjs"
+   fi
+   node "$SANTA_CHECKOUT/deploy/check-gb10.mjs" --stage runtime --smoke
+   node "$SANTA_CHECKOUT/deploy/installer-verify.mjs"
+   print_access_links
+   exit 0
+  fi
+ fi
+ if command -v nemoclaw >/dev/null && [ "$SANTA_OWNED" != 1 ] && [ "$SANTA_REUSE" != 1 ]; then
+  fail 'NemoClaw is already installed. Use --check or explicitly select --reuse-existing --sandbox NAME. It was not upgraded.'
+ fi
+ if command -v openshell >/dev/null && ! command -v nemoclaw >/dev/null; then
+  fail 'An existing standalone OpenShell installation needs operator qualification. It was not adopted or changed.'
+ fi
+ if [ "$SANTA_REUSE" = 1 ]; then command -v nemoclaw >/dev/null || fail '--reuse-existing needs an installed native runtime.'; fi
 fi
-if command -v nemoclaw >/dev/null && [ "$SANTA_OWNED" != 1 ] && [ "$SANTA_REUSE" != 1 ]; then
- fail 'NemoClaw is already installed. Use --check or explicitly select --reuse-existing --sandbox NAME. It was not upgraded.'
-fi
-if command -v openshell >/dev/null && ! command -v nemoclaw >/dev/null; then
- fail 'An existing standalone OpenShell installation needs operator qualification. It was not adopted or changed.'
-fi
-if [ "$SANTA_REUSE" = 1 ]; then command -v nemoclaw >/dev/null || fail '--reuse-existing needs an installed native runtime.'; fi
 if [ "$SANTA_ACCEPT" != 1 ]; then
- echo "Install the pinned Santa stack for $SANTA_NAME? This may install Ubuntu utilities, configure Docker on an empty host, and download model weights/images."
+ if [ "$SANTA_MODE" = prefetch ]; then
+  echo 'Download the pinned Qwen model and vLLM image? This may install Docker if missing.'
+ else
+  echo "Install the pinned Santa stack for $SANTA_NAME? This may install Ubuntu utilities, configure Docker on an empty host, and download model weights/images."
+ fi
  echo 'NVIDIA/third-party software notices and model terms apply. Existing services/models will not be replaced.'
  read -r -p 'Continue? [y/N] ' SANTA_REPLY
  [[ "$SANTA_REPLY" = y || "$SANTA_REPLY" = Y || "$SANTA_REPLY" = yes ]] || fail 'Cancelled; no installation changes made.'
@@ -183,7 +192,11 @@ trap cleanup EXIT
 record(){ python3 "$SANTA_CHECKOUT/deploy/install-receipt.py" write "$SANTA_RECEIPT" "$SANTA_CHECKOUT" "$SANTA_NAME" "$SANTA_REUSE" "$1"; }
 
 SANTA_PACKAGES=()
-for pair in 'curl:curl' 'git:git' 'tar:tar' 'xz:xz-utils' 'make:build-essential' 'g++:build-essential' 'ss:iproute2'; do
+SANTA_REQUIRED_TOOLS=()
+if [ "$SANTA_MODE" = install ]; then
+ SANTA_REQUIRED_TOOLS=('curl:curl' 'git:git' 'tar:tar' 'xz:xz-utils' 'make:build-essential' 'g++:build-essential' 'ss:iproute2')
+fi
+for pair in "${SANTA_REQUIRED_TOOLS[@]}"; do
  SANTA_CMD="${pair%%:*}"; command -v "$SANTA_CMD" >/dev/null || SANTA_PACKAGES+=("${pair#*:}")
 done
 [ -f /etc/ssl/certs/ca-certificates.crt ] || SANTA_PACKAGES+=(ca-certificates)
@@ -201,6 +214,10 @@ if ! docker info >/dev/null 2>&1; then
  printf -v SANTA_REEXEC '%q ' bash "$SANTA_CHECKOUT/install.sh" "${SANTA_ORIGINAL_ARGS[@]}" --yes
  flock -u 9; exec 9>&-
  exec sg docker -c "$SANTA_REEXEC"
+fi
+if [ "$SANTA_MODE" = prefetch ]; then
+ bash "$SANTA_CHECKOUT/deploy/install-gb10-model.sh" --prefetch
+ exit 0
 fi
 if ! docker info --format '{{json .Runtimes}}' | grep -q 'nvidia'; then
  [ -z "$(docker ps -q)" ] || fail 'GPU container runtime needs configuration but containers are running. They were not stopped.'

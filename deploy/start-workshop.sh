@@ -24,6 +24,11 @@ if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
  bash "$SANTA_ROOT/deploy/gb10-sandbox-boot.sh" start
 fi
 node "$SANTA_ROOT/deploy/check-gb10.mjs" --stage runtime
+if [ -n "${SANTA_GB10_BOOT_STATE:-}" ]; then
+ # OpenShell and the sandbox can be ready before the host dashboard forward exists.
+ echo 'Checking the OpenClaw dashboard forward.'
+ nemoclaw "$SANTA_SANDBOX" recover
+fi
 if [ ! -d node_modules ]; then npm ci --ignore-scripts; fi
 if [ ! -f dist/index.html ]; then npm run build; fi
 echo "Open http://127.0.0.1:${PORT:-4310}/santa/ on this Spark, or forward the loopback port over SSH."

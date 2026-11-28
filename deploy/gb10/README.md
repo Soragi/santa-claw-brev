@@ -29,7 +29,20 @@ bash install.sh
 
 The installer starts Qwen 3.8 27B NVFP4 at 64K context, sets up the sandbox, and starts Santa Claw. Wait for **Santa Claw is ready**.
 
-**Pre-stage Qwen to save time.** If vLLM already serves `nvidia/Qwen3.8-27B-NVFP4` on port `8000` under that exact model ID, the installer reuses it and verifies tool calling and vision. The server must be reachable from OpenShell. If port `8000` is free, the installer starts its pinned vLLM setup and reuses the exact weights from `$HOME/.cache/huggingface/hub` and the pinned image from Docker’s local cache. The model revision and image digest are in [the installer lock](../../config/installer.json). If another service is using port `8000`, free the port before retrying. Existing Santa Claw installations keep their configured model.
+<details>
+<summary>Optional: download Qwen before installing</summary>
+
+After cloning the repository, run this as the same Spark user who will install Santa Claw:
+
+```bash
+bash install.sh --prefetch-model
+```
+
+This stages the exact Qwen weights and vLLM image. When it finishes, run `bash install.sh`. The installer starts vLLM using the cached snapshot and image. If you already downloaded Qwen yourself, it reuses a complete snapshot of the [pinned revision](../../config/installer.json) under `$HOME/.cache/huggingface/hub` and downloads any missing files. The rest of the workshop still needs internet access during installation.
+
+If your own vLLM server is already serving `nvidia/Qwen3.8-27B-NVFP4` on port `8000`, the installer can reuse it and checks local tool calling and vision. The server must be reachable from OpenShell and must start on boot if you want automatic recovery.
+
+</details>
 
 ### 64 GB Spark
 
@@ -65,7 +78,7 @@ Run the printed SSH command in a **laptop terminal**. Replace the final `usernam
 
 ## After a reboot
 
-On either path, OpenClaw and the Village start automatically after a normal Spark reboot. Give Qwen a couple of minutes to load, then reopen the links. If you use a laptop, reconnect the SSH tunnel.
+On either path, OpenClaw and the Village start automatically after a normal Spark reboot. Give Qwen several minutes to load, then reopen the links. Startup also checks and restores the OpenClaw dashboard forward. If you use a laptop, reconnect the SSH tunnel.
 
 <details>
 <summary>Setup stopped or the village won't open</summary>
